@@ -4,7 +4,37 @@
 // one table of keys and all game logic; this script only moves data.
 'use strict';
 
+// --- the helpers that the module imports in place of compiler-rt ------------------------------
+
+// The module links no compiler-rt (DESIGN.md 5.3), so the functions of it that the game calls are
+// imports, and these give the same results to the bit. `__multi3` is the product of two 128-bit
+// integers: BigInt is exact. A 128-bit value crosses as two 64-bit halves, low first, and the
+// result goes to the address in the first argument. `zig build web-check` compares each helper
+// with compiler-rt's. A game that calls another (a 128-bit quotient, `exp`) adds its helper here,
+// as a previous port's script did for `__udivti3` and `exp`.
+function gameportHelpers(memory) {
+  const mask64 = (1n << 64n) - 1n;
+
+  function wide(lo, hi) {
+    return (BigInt.asUintN(64, hi) << 64n) | BigInt.asUintN(64, lo);
+  }
+
+  function store(at, value) {
+    const view = new DataView(memory.buffer);
+    view.setBigUint64(at, value & mask64, true);
+    view.setBigUint64(at + 8, (value >> 64n) & mask64, true);
+  }
+
+  return {
+    __multi3(at, aLo, aHi, bLo, bHi) {
+      store(at, wide(aLo, aHi) * wide(bLo, bHi));
+    },
+  };
+}
+
 (() => {
+  // Under Node, which `zig build web-check` uses for the helpers above, there is no page.
+  if (typeof document === 'undefined') return;
   const canvas = document.getElementById('screen');
   const overlay = document.getElementById('overlay');
   const message = document.getElementById('message');
@@ -485,7 +515,7 @@
     memory = new WebAssembly.Memory(limits.maximum === undefined
       ? { initial: limits.initial }
       : { initial: limits.initial, maximum: limits.maximum });
-    const { instance } = await WebAssembly.instantiate(code, { env: { memory, ...imports } });
+    const { instance } = await WebAssembly.instantiate(code, { env: { memory, ...imports, ...gameportHelpers(memory) } });
     wasm = instance.exports;
     wasm.gp_init();
 
@@ -536,3 +566,5 @@
 
   load().catch((e) => stop('The game could not start: ' + e.message));
 })();
+
+if (typeof module === 'object') module.exports = { gameportHelpers };

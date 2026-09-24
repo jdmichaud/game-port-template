@@ -10,6 +10,8 @@ observations, verdicts, reports) and `src/agent/host.zig` (the agent host's comm
 - `zig build test-public` and `zig build test-reference`: the two scenario suites.
 - `zig build smoke` (the agent host over a synthetic script) and `zig build verify` (the agent
   binary links no SDL).
+- `zig build web`: the browser build, with the check of its module's imports. When a helper of
+  the page changes, `zig build web-check` (it needs Node.js).
 - `zig fmt --check src build.zig`.
 
 The steps are listed at the top of `build.zig`; agents build into a prefix and a cache under
