@@ -1,0 +1,13 @@
+# gameport-agent smoke script: a fresh game with a synthetic title, a few updates, a key, a save,
+# a quit, and inspection.
+{"cmd":"reset","assets":[{"name":"TITLE.TXT","text":"Smoke"}]}
+{"cmd":"run_until","condition":{"phase":"playing"},"max_updates":10}
+{"cmd":"step","updates":60}
+{"cmd":"inject","events":[{"kind":"key_down","key":"left"},{"kind":"key_down","key":"f2"}]}
+{"cmd":"step","updates":10}
+{"cmd":"inject","events":[{"kind":"quit"}]}
+{"cmd":"run_until","condition":{"finished":true},"max_updates":10}
+{"cmd":"capture","what":"frame"}
+{"cmd":"save_list"}
+{"cmd":"inspect"}
+{"cmd":"quit"}

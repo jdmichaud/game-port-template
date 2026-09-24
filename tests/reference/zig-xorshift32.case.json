@@ -1,0 +1,36 @@
+{
+ "schema": "testkit-case/1",
+ "id": "example.xorshift32.zig",
+ "driver": "zig.function",
+ "reference": {
+  "class": "specified-contract",
+  "status": "verified",
+  "evidence": "an example of the reference suite's main pattern: the vectors of a routine, recorded once, replayed through the port's own function. Here the routine is the placeholder game's generator and the vectors come from an independent implementation of its specification; in a port they are the original routine's outputs, recorded under an emulator outside the repository",
+  "redistribution": "redistributable",
+  "source": {
+   "tool": "an independent implementation",
+   "notes": "replace with the first recording of the original"
+  }
+ },
+ "inputs": {
+  "files": [
+   {
+    "path": "tests/reference/data/xorshift32.obs.json",
+    "sha256": "ac869943dcb3e9a0057d2ca60a9007afe1c28013cce14f74524be048a5e72c0b"
+   }
+  ]
+ },
+ "config": {
+  "function": "xorshift32",
+  "reference": "tests/reference/data/xorshift32.obs.json"
+ },
+ "expected_file": "tests/reference/data/xorshift32.obs.json",
+ "expected": [],
+ "expected_verdict": "pass",
+ "bounds": {
+  "max_updates": 0,
+  "max_events": 0,
+  "max_virtual_ns": 0,
+  "wall_clock_ms": 10000
+ }
+}

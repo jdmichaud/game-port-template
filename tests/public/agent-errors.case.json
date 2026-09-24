@@ -1,0 +1,239 @@
+{
+ "schema": "testkit-case/1",
+ "id": "agent.scenario.errors",
+ "driver": "agent.scenario",
+ "reference": {
+  "class": "regression-baseline",
+  "status": "verified",
+  "redistribution": "redistributable",
+  "evidence": "a command before reset, an unknown command, an unknown key, a malformed reset, an invalid condition, a capture before any frame and an audio capture without recording are errors; the run goes on, a run_until stops at its limit, and nothing after quit runs",
+  "source": {
+   "tool": "gameport-test case --print-actual",
+   "notes": "the placeholder game through the agent host"
+  }
+ },
+ "config": {
+  "script": [
+   {
+    "cmd": "step"
+   },
+   {
+    "cmd": "fly"
+   },
+   {
+    "cmd": "inject",
+    "events": [
+     {
+      "kind": "key_down",
+      "key": "hyperspace"
+     }
+    ]
+   },
+   {
+    "cmd": "reset",
+    "assets": "TITLE.TXT"
+   },
+   {
+    "cmd": "reset"
+   },
+   {
+    "cmd": "run_until",
+    "condition": {
+     "nonsense": 1
+    }
+   },
+   {
+    "cmd": "capture",
+    "what": "frame"
+   },
+   {
+    "cmd": "capture",
+    "what": "audio"
+   },
+   {
+    "cmd": "run_until",
+    "condition": {
+     "finished": true
+    },
+    "max_updates": 5
+   },
+   {
+    "cmd": "inspect"
+   },
+   {
+    "cmd": "quit"
+   },
+   {
+    "cmd": "inspect"
+   }
+  ]
+ },
+ "expected": [
+  {
+   "n": "0.step.error",
+   "v": "s:no instance: reset first"
+  },
+  {
+   "n": "1.fly.error",
+   "v": "s:unknown command"
+  },
+  {
+   "n": "2.inject.error",
+   "v": "s:UnknownKey"
+  },
+  {
+   "n": "3.reset.error",
+   "v": "s:assets is not an array"
+  },
+  {
+   "n": "4.reset.instance",
+   "v": "u:1"
+  },
+  {
+   "n": "5.run_until.error",
+   "v": "s:condition must be one of phase, frames, updates, finished"
+  },
+  {
+   "n": "6.capture.error",
+   "v": "s:no frame has been presented"
+  },
+  {
+   "n": "7.capture.error",
+   "v": "s:audio recording is off: reset with record_audio"
+  },
+  {
+   "n": "8.run_until.ran",
+   "v": "u:5"
+  },
+  {
+   "n": "8.run_until.result",
+   "v": "s:running"
+  },
+  {
+   "n": "8.run_until.stopped_by",
+   "v": "s:limit:max_updates"
+  },
+  {
+   "n": "8.run_until.clock_ns",
+   "v": "u:80000000"
+  },
+  {
+   "n": "8.run_until.game.phase",
+   "v": "s:playing"
+  },
+  {
+   "n": "8.run_until.game.update_count",
+   "v": "u:5"
+  },
+  {
+   "n": "8.run_until.game.events_consumed",
+   "v": "u:0"
+  },
+  {
+   "n": "8.run_until.game.frames_presented",
+   "v": "u:5"
+  },
+  {
+   "n": "8.run_until.game.last_frame_hash",
+   "v": "s:28e46201154cb345"
+  },
+  {
+   "n": "8.run_until.game.state_hash",
+   "v": "s:c72aea0d2af05eac"
+  },
+  {
+   "n": "8.run_until.game.title",
+   "v": "s:"
+  },
+  {
+   "n": "8.run_until.game.bounces",
+   "v": "u:0"
+  },
+  {
+   "n": "8.run_until.game.saves_written",
+   "v": "u:0"
+  },
+  {
+   "n": "8.run_until.game.loads_done",
+   "v": "u:0"
+  },
+  {
+   "n": "9.inspect.instance",
+   "v": "u:1"
+  },
+  {
+   "n": "9.inspect.game.phase",
+   "v": "s:playing"
+  },
+  {
+   "n": "9.inspect.game.update_count",
+   "v": "u:5"
+  },
+  {
+   "n": "9.inspect.game.events_consumed",
+   "v": "u:0"
+  },
+  {
+   "n": "9.inspect.game.frames_presented",
+   "v": "u:5"
+  },
+  {
+   "n": "9.inspect.game.last_frame_hash",
+   "v": "s:28e46201154cb345"
+  },
+  {
+   "n": "9.inspect.game.state_hash",
+   "v": "s:c72aea0d2af05eac"
+  },
+  {
+   "n": "9.inspect.game.title",
+   "v": "s:"
+  },
+  {
+   "n": "9.inspect.game.bounces",
+   "v": "u:0"
+  },
+  {
+   "n": "9.inspect.game.saves_written",
+   "v": "u:0"
+  },
+  {
+   "n": "9.inspect.game.loads_done",
+   "v": "u:0"
+  },
+  {
+   "n": "9.inspect.backend.clock_ns",
+   "v": "u:80000000"
+  },
+  {
+   "n": "9.inspect.backend.frames_presented",
+   "v": "u:5"
+  },
+  {
+   "n": "9.inspect.backend.last_frame_hash",
+   "v": "s:6ed30b16ba78831d"
+  },
+  {
+   "n": "9.inspect.backend.events_pending",
+   "v": "u:0"
+  },
+  {
+   "n": "9.inspect.backend.audio.queued_frames",
+   "v": "u:796"
+  },
+  {
+   "n": "9.inspect.backend.audio.played_frames",
+   "v": "u:1764"
+  },
+  {
+   "n": "10.quit.instance",
+   "v": "u:1"
+  }
+ ],
+ "expected_verdict": "pass",
+ "bounds": {
+  "max_updates": 1000,
+  "max_virtual_ns": 0,
+  "wall_clock_ms": 10000
+ }
+}

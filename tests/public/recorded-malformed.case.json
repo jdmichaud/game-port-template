@@ -1,0 +1,35 @@
+{
+ "schema": "testkit-case/1",
+ "id": "calibration.recorded.malformed",
+ "driver": "recorded",
+ "reference": {
+  "class": "specified-contract",
+  "status": "verified",
+  "evidence": "negative control: the candidate is not an observation file",
+  "redistribution": "redistributable",
+  "source": {
+   "tool": "hand-written",
+   "notes": "runner calibration"
+  }
+ },
+ "inputs": {
+  "files": [
+   {
+    "path": "tests/public/data/pair-a.obs.json",
+    "sha256": "fe0e7e309468299e0430fd4738c47d972094d2c497722eed09755cd4dcb1eb2e"
+   },
+   {
+    "path": "tests/public/data/not-observations.json",
+    "sha256": "e29aaed7df24642db852c52d22634bfbd8101b8233b72b2977646373b06bfa11"
+   }
+  ]
+ },
+ "config": {
+  "candidate": "tests/public/data/not-observations.json"
+ },
+ "expected_file": "tests/public/data/pair-a.obs.json",
+ "expected_verdict": "reference_error",
+ "bounds": {
+  "wall_clock_ms": 10000
+ }
+}

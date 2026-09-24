@@ -1,0 +1,33 @@
+{
+ "schema": "testkit-case/1",
+ "id": "calibration.provisional.diagnostic",
+ "driver": "synthetic.echo",
+ "reference": {
+  "class": "specified-contract",
+  "status": "provisional",
+  "evidence": "a provisional expectation that fails: the run reports it as a diagnostic and does not fail",
+  "redistribution": "redistributable",
+  "source": {
+   "tool": "hand-written",
+   "notes": "runner calibration"
+  }
+ },
+ "config": {
+  "values": [
+   {
+    "n": "a",
+    "v": "u:2"
+   }
+  ]
+ },
+ "expected": [
+  {
+   "n": "a",
+   "v": "u:1"
+  }
+ ],
+ "expected_verdict": "pass",
+ "bounds": {
+  "wall_clock_ms": 10000
+ }
+}

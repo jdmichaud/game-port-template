@@ -1,0 +1,85 @@
+{
+ "schema": "testkit-observations/1",
+ "producer": {
+  "tool": "hand-written",
+  "notes": "index 5 altered from u:25 to u:26"
+ },
+ "observations": [
+  {
+   "n": "synthetic.square[0]",
+   "v": "u:0",
+   "in": {
+    "x": "u:0"
+   }
+  },
+  {
+   "n": "synthetic.square[1]",
+   "v": "u:1",
+   "in": {
+    "x": "u:1"
+   }
+  },
+  {
+   "n": "synthetic.square[2]",
+   "v": "u:4",
+   "in": {
+    "x": "u:2"
+   }
+  },
+  {
+   "n": "synthetic.square[3]",
+   "v": "u:9",
+   "in": {
+    "x": "u:3"
+   }
+  },
+  {
+   "n": "synthetic.square[4]",
+   "v": "u:16",
+   "in": {
+    "x": "u:4"
+   }
+  },
+  {
+   "n": "synthetic.square[5]",
+   "v": "u:26",
+   "in": {
+    "x": "u:5"
+   }
+  },
+  {
+   "n": "synthetic.square[6]",
+   "v": "u:36",
+   "in": {
+    "x": "u:6"
+   }
+  },
+  {
+   "n": "synthetic.square[7]",
+   "v": "u:49",
+   "in": {
+    "x": "u:7"
+   }
+  },
+  {
+   "n": "synthetic.negative",
+   "v": "i:-42"
+  },
+  {
+   "n": "synthetic.flag",
+   "v": "b:true"
+  },
+  {
+   "n": "synthetic.bytes",
+   "v": "x:00ff10"
+  },
+  {
+   "n": "synthetic.text",
+   "v": "s:hello"
+  },
+  {
+   "n": "synthetic.digest",
+   "v": "h:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  }
+ ]
+}

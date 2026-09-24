@@ -1,0 +1,1815 @@
+{
+ "schema": "testkit-observations/1",
+ "producer": {
+  "tool": "an independent implementation of xorshift32 (Marsaglia 2003)",
+  "notes": "an example: in a port, these are the outputs of the original's own routine, recorded outside the repository"
+ },
+ "observations": [
+  {
+   "n": "xorshift32[seed=0x00000000].seed",
+   "in": {
+    "seed": "u:0"
+   },
+   "v": "u:0"
+  },
+  {
+   "n": "xorshift32[seed=0x00000001].seed",
+   "in": {
+    "seed": "u:1"
+   },
+   "v": "u:270369"
+  },
+  {
+   "n": "xorshift32[seed=0x00000002].seed",
+   "in": {
+    "seed": "u:2"
+   },
+   "v": "u:540738"
+  },
+  {
+   "n": "xorshift32[seed=0x00000003].seed",
+   "in": {
+    "seed": "u:3"
+   },
+   "v": "u:811107"
+  },
+  {
+   "n": "xorshift32[seed=0x7fffffff].seed",
+   "in": {
+    "seed": "u:2147483647"
+   },
+   "v": "u:2148245535"
+  },
+  {
+   "n": "xorshift32[seed=0x80000000].seed",
+   "in": {
+    "seed": "u:2147483648"
+   },
+   "v": "u:2148024320"
+  },
+  {
+   "n": "xorshift32[seed=0xfffffffe].seed",
+   "in": {
+    "seed": "u:4294967294"
+   },
+   "v": "u:507966"
+  },
+  {
+   "n": "xorshift32[seed=0xffffffff].seed",
+   "in": {
+    "seed": "u:4294967295"
+   },
+   "v": "u:253983"
+  },
+  {
+   "n": "xorshift32[seed=0x03e8b84b].seed",
+   "in": {
+    "seed": "u:65583179"
+   },
+   "v": "u:2296091995"
+  },
+  {
+   "n": "xorshift32[seed=0xd1c5aaf0].seed",
+   "in": {
+    "seed": "u:3519392496"
+   },
+   "v": "u:4159213341"
+  },
+  {
+   "n": "xorshift32[seed=0xf077b69f].seed",
+   "in": {
+    "seed": "u:4034377375"
+   },
+   "v": "u:3526290541"
+  },
+  {
+   "n": "xorshift32[seed=0xa925e7a1].seed",
+   "in": {
+    "seed": "u:2837833633"
+   },
+   "v": "u:2951242857"
+  },
+  {
+   "n": "xorshift32[seed=0xe9e4c8e8].seed",
+   "in": {
+    "seed": "u:3924084968"
+   },
+   "v": "u:1875370516"
+  },
+  {
+   "n": "xorshift32[seed=0x8be37df3].seed",
+   "in": {
+    "seed": "u:2346941939"
+   },
+   "v": "u:1878037629"
+  },
+  {
+   "n": "xorshift32[seed=0xa18d3c05].seed",
+   "in": {
+    "seed": "u:2710387717"
+   },
+   "v": "u:3351150435"
+  },
+  {
+   "n": "xorshift32[seed=0xb393586c].seed",
+   "in": {
+    "seed": "u:3012778092"
+   },
+   "v": "u:3410505795"
+  },
+  {
+   "n": "xorshift32[seed=0x252c3c6f].seed",
+   "in": {
+    "seed": "u:623656047"
+   },
+   "v": "u:4136643295"
+  },
+  {
+   "n": "xorshift32[seed=0x8f07d990].seed",
+   "in": {
+    "seed": "u:2399656336"
+   },
+   "v": "u:4069102282"
+  },
+  {
+   "n": "xorshift32[seed=0x91937ccc].seed",
+   "in": {
+    "seed": "u:2442362060"
+   },
+   "v": "u:1062927081"
+  },
+  {
+   "n": "xorshift32[seed=0xc9375d6d].seed",
+   "in": {
+    "seed": "u:3375848813"
+   },
+   "v": "u:1908893728"
+  },
+  {
+   "n": "xorshift32[seed=0xba5ac473].seed",
+   "in": {
+    "seed": "u:3126510707"
+   },
+   "v": "u:3092149817"
+  },
+  {
+   "n": "xorshift32[seed=0xd0a45d3e].seed",
+   "in": {
+    "seed": "u:3500432702"
+   },
+   "v": "u:997566303"
+  },
+  {
+   "n": "xorshift32[seed=0x0ea02dac].seed",
+   "in": {
+    "seed": "u:245378476"
+   },
+   "v": "u:1772137702"
+  },
+  {
+   "n": "xorshift32[seed=0xd8e73491].seed",
+   "in": {
+    "seed": "u:3639030929"
+   },
+   "v": "u:4040457931"
+  },
+  {
+   "n": "xorshift32[seed=0x6d3b8e45].seed",
+   "in": {
+    "seed": "u:1832619589"
+   },
+   "v": "u:2190944188"
+  },
+  {
+   "n": "xorshift32[seed=0x4732c44d].seed",
+   "in": {
+    "seed": "u:1194509389"
+   },
+   "v": "u:3906345360"
+  },
+  {
+   "n": "xorshift32[seed=0x5e20408c].seed",
+   "in": {
+    "seed": "u:1579171980"
+   },
+   "v": "u:2416744724"
+  },
+  {
+   "n": "xorshift32[seed=0xc344112d].seed",
+   "in": {
+    "seed": "u:3276017965"
+   },
+   "v": "u:1834197565"
+  },
+  {
+   "n": "xorshift32[seed=0xa6b64016].seed",
+   "in": {
+    "seed": "u:2796961814"
+   },
+   "v": "u:3089260236"
+  },
+  {
+   "n": "xorshift32[seed=0x71660715].seed",
+   "in": {
+    "seed": "u:1902511893"
+   },
+   "v": "u:2166031671"
+  },
+  {
+   "n": "xorshift32[seed=0xc0602ef0].seed",
+   "in": {
+    "seed": "u:3227528944"
+   },
+   "v": "u:1920453071"
+  },
+  {
+   "n": "xorshift32[seed=0x89f03016].seed",
+   "in": {
+    "seed": "u:2314219542"
+   },
+   "v": "u:1906592271"
+  },
+  {
+   "n": "xorshift32[seed=0xee8bf4eb].seed",
+   "in": {
+    "seed": "u:4002149611"
+   },
+   "v": "u:2462925024"
+  },
+  {
+   "n": "xorshift32[seed=0x55456035].seed",
+   "in": {
+    "seed": "u:1430609973"
+   },
+   "v": "u:3509857812"
+  },
+  {
+   "n": "xorshift32[seed=0xf07ed358].seed",
+   "in": {
+    "seed": "u:4034843480"
+   },
+   "v": "u:1756171282"
+  },
+  {
+   "n": "xorshift32[seed=0x585cfe94].seed",
+   "in": {
+    "seed": "u:1482489492"
+   },
+   "v": "u:911062835"
+  },
+  {
+   "n": "xorshift32[seed=0x7106302f].seed",
+   "in": {
+    "seed": "u:1896230959"
+   },
+   "v": "u:1467154030"
+  },
+  {
+   "n": "xorshift32[seed=0x8a5eace4].seed",
+   "in": {
+    "seed": "u:2321460452"
+   },
+   "v": "u:2810340261"
+  },
+  {
+   "n": "xorshift32[seed=0x3e854037].seed",
+   "in": {
+    "seed": "u:1048920119"
+   },
+   "v": "u:1191085494"
+  },
+  {
+   "n": "xorshift32[seed=0xb84caaa7].seed",
+   "in": {
+    "seed": "u:3092032167"
+   },
+   "v": "u:2383665483"
+  },
+  {
+   "n": "xorshift32[seed=0x0eed420f].seed",
+   "in": {
+    "seed": "u:250429967"
+   },
+   "v": "u:1932712569"
+  },
+  {
+   "n": "xorshift32[seed=0x4383ea42].seed",
+   "in": {
+    "seed": "u:1132718658"
+   },
+   "v": "u:3887927751"
+  },
+  {
+   "n": "xorshift32[seed=0x34c1d5e3].seed",
+   "in": {
+    "seed": "u:885118435"
+   },
+   "v": "u:3251366269"
+  },
+  {
+   "n": "xorshift32[seed=0x44070702].seed",
+   "in": {
+    "seed": "u:1141311234"
+   },
+   "v": "u:939899729"
+  },
+  {
+   "n": "xorshift32[seed=0xd7171bde].seed",
+   "in": {
+    "seed": "u:3608615902"
+   },
+   "v": "u:3119840488"
+  },
+  {
+   "n": "xorshift32[seed=0x093e1db5].seed",
+   "in": {
+    "seed": "u:155065781"
+   },
+   "v": "u:2610153169"
+  },
+  {
+   "n": "xorshift32[seed=0x162531f4].seed",
+   "in": {
+    "seed": "u:371536372"
+   },
+   "v": "u:3009861337"
+  },
+  {
+   "n": "xorshift32[seed=0x97cae8c7].seed",
+   "in": {
+    "seed": "u:2546657479"
+   },
+   "v": "u:2426394734"
+  },
+  {
+   "n": "xorshift32[seed=0x5e9b7255].seed",
+   "in": {
+    "seed": "u:1587245653"
+   },
+   "v": "u:719883677"
+  },
+  {
+   "n": "xorshift32[seed=0xc8598cfe].seed",
+   "in": {
+    "seed": "u:3361311998"
+   },
+   "v": "u:3238015933"
+  },
+  {
+   "n": "xorshift32[seed=0x78658dc4].seed",
+   "in": {
+    "seed": "u:2019921348"
+   },
+   "v": "u:4067445866"
+  },
+  {
+   "n": "xorshift32[seed=0xe4abf37b].seed",
+   "in": {
+    "seed": "u:3836474235"
+   },
+   "v": "u:3261013305"
+  },
+  {
+   "n": "xorshift32[seed=0xc1b73227].seed",
+   "in": {
+    "seed": "u:3250008615"
+   },
+   "v": "u:3649829406"
+  },
+  {
+   "n": "xorshift32[seed=0x53154bae].seed",
+   "in": {
+    "seed": "u:1393904558"
+   },
+   "v": "u:3061720414"
+  },
+  {
+   "n": "xorshift32[seed=0x135499bc].seed",
+   "in": {
+    "seed": "u:324311484"
+   },
+   "v": "u:2349361197"
+  },
+  {
+   "n": "xorshift32[seed=0x414f21c5].seed",
+   "in": {
+    "seed": "u:1095705029"
+   },
+   "v": "u:193838270"
+  },
+  {
+   "n": "xorshift32[seed=0x76ba2074].seed",
+   "in": {
+    "seed": "u:1991909492"
+   },
+   "v": "u:1680055534"
+  },
+  {
+   "n": "xorshift32[seed=0x384a37d6].seed",
+   "in": {
+    "seed": "u:944388054"
+   },
+   "v": "u:2829703502"
+  },
+  {
+   "n": "xorshift32[seed=0x80905be5].seed",
+   "in": {
+    "seed": "u:2156944357"
+   },
+   "v": "u:4135287923"
+  },
+  {
+   "n": "xorshift32[seed=0x990d9023].seed",
+   "in": {
+    "seed": "u:2567802915"
+   },
+   "v": "u:1245008199"
+  },
+  {
+   "n": "xorshift32[seed=0x7e6c0731].seed",
+   "in": {
+    "seed": "u:2121008945"
+   },
+   "v": "u:801199860"
+  },
+  {
+   "n": "xorshift32[seed=0xd980136b].seed",
+   "in": {
+    "seed": "u:3649049451"
+   },
+   "v": "u:2790182205"
+  },
+  {
+   "n": "xorshift32[seed=0x759c3ee4].seed",
+   "in": {
+    "seed": "u:1973173988"
+   },
+   "v": "u:3126345540"
+  },
+  {
+   "n": "xorshift32[seed=0xe2ddc31c].seed",
+   "in": {
+    "seed": "u:3806184220"
+   },
+   "v": "u:225682979"
+  },
+  {
+   "n": "xorshift32[seed=0x73e33172].seed",
+   "in": {
+    "seed": "u:1944269170"
+   },
+   "v": "u:2892106004"
+  },
+  {
+   "n": "xorshift32[seed=0x6ec85a3b].seed",
+   "in": {
+    "seed": "u:1858624059"
+   },
+   "v": "u:3563984764"
+  },
+  {
+   "n": "xorshift32[seed=0xf6921b7b].seed",
+   "in": {
+    "seed": "u:4136770427"
+   },
+   "v": "u:173609253"
+  },
+  {
+   "n": "xorshift32[seed=0xee643add].seed",
+   "in": {
+    "seed": "u:3999546077"
+   },
+   "v": "u:1321887234"
+  },
+  {
+   "n": "xorshift32[seed=0x723e2de4].seed",
+   "in": {
+    "seed": "u:1916677604"
+   },
+   "v": "u:1205613189"
+  },
+  {
+   "n": "xorshift32[seed=0xf9142bee].seed",
+   "in": {
+    "seed": "u:4178848750"
+   },
+   "v": "u:4048776858"
+  },
+  {
+   "n": "xorshift32[seed=0xfe166565].seed",
+   "in": {
+    "seed": "u:4262880613"
+   },
+   "v": "u:1709267768"
+  },
+  {
+   "n": "xorshift32[seed=0xff22baf9].seed",
+   "in": {
+    "seed": "u:4280466169"
+   },
+   "v": "u:2814645799"
+  },
+  {
+   "n": "xorshift32[seed=0x46eb3a10].seed",
+   "in": {
+    "seed": "u:1189820944"
+   },
+   "v": "u:344748612"
+  },
+  {
+   "n": "xorshift32[seed=0x09eb150f].seed",
+   "in": {
+    "seed": "u:166401295"
+   },
+   "v": "u:34788842"
+  },
+  {
+   "n": "xorshift32[seed=0xd1054ad6].seed",
+   "in": {
+    "seed": "u:3506784982"
+   },
+   "v": "u:1940482521"
+  },
+  {
+   "n": "xorshift32[seed=0xd96a74cf].seed",
+   "in": {
+    "seed": "u:3647632591"
+   },
+   "v": "u:1770535414"
+  },
+  {
+   "n": "xorshift32[seed=0x8ee72696].seed",
+   "in": {
+    "seed": "u:2397513366"
+   },
+   "v": "u:747610636"
+  },
+  {
+   "n": "xorshift32[seed=0x2ab2a6b7].seed",
+   "in": {
+    "seed": "u:716351159"
+   },
+   "v": "u:3001764133"
+  },
+  {
+   "n": "xorshift32[seed=0x8c9aaa01].seed",
+   "in": {
+    "seed": "u:2358946305"
+   },
+   "v": "u:3800447852"
+  },
+  {
+   "n": "xorshift32[seed=0x647dfdb0].seed",
+   "in": {
+    "seed": "u:1685978544"
+   },
+   "v": "u:2730072821"
+  },
+  {
+   "n": "xorshift32[seed=0xa7dbdcd1].seed",
+   "in": {
+    "seed": "u:2816203985"
+   },
+   "v": "u:1416875217"
+  },
+  {
+   "n": "xorshift32[seed=0xba858629].seed",
+   "in": {
+    "seed": "u:3129312809"
+   },
+   "v": "u:1112850985"
+  },
+  {
+   "n": "xorshift32[seed=0x9aaf8833].seed",
+   "in": {
+    "seed": "u:2595194931"
+   },
+   "v": "u:512909575"
+  },
+  {
+   "n": "xorshift32[seed=0x698f9497].seed",
+   "in": {
+    "seed": "u:1771017367"
+   },
+   "v": "u:4172945977"
+  },
+  {
+   "n": "xorshift32[seed=0x1e363d87].seed",
+   "in": {
+    "seed": "u:506871175"
+   },
+   "v": "u:3914373572"
+  },
+  {
+   "n": "xorshift32[seed=0x80ff7840].seed",
+   "in": {
+    "seed": "u:2164226112"
+   },
+   "v": "u:2434709723"
+  },
+  {
+   "n": "xorshift32[seed=0x4600d9bd].seed",
+   "in": {
+    "seed": "u:1174460861"
+   },
+   "v": "u:4225610726"
+  },
+  {
+   "n": "xorshift32[seed=0xd11bd632].seed",
+   "in": {
+    "seed": "u:3508262450"
+   },
+   "v": "u:3496327260"
+  },
+  {
+   "n": "xorshift32[seed=0x2c26e850].seed",
+   "in": {
+    "seed": "u:740747344"
+   },
+   "v": "u:3569256454"
+  },
+  {
+   "n": "xorshift32[seed=0x74ba4dc7].seed",
+   "in": {
+    "seed": "u:1958366663"
+   },
+   "v": "u:2639584134"
+  },
+  {
+   "n": "xorshift32[seed=0xce6ee9a1].seed",
+   "in": {
+    "seed": "u:3463375265"
+   },
+   "v": "u:2013446540"
+  },
+  {
+   "n": "xorshift32[seed=0x842aaf2c].seed",
+   "in": {
+    "seed": "u:2217389868"
+   },
+   "v": "u:3894918827"
+  },
+  {
+   "n": "xorshift32[seed=0x9371e438].seed",
+   "in": {
+    "seed": "u:2473714744"
+   },
+   "v": "u:1361103779"
+  },
+  {
+   "n": "xorshift32[seed=0x6babf861].seed",
+   "in": {
+    "seed": "u:1806432353"
+   },
+   "v": "u:2153616498"
+  },
+  {
+   "n": "xorshift32[seed=0x81f034e3].seed",
+   "in": {
+    "seed": "u:2180003043"
+   },
+   "v": "u:1794047477"
+  },
+  {
+   "n": "xorshift32[seed=0x3d61108f].seed",
+   "in": {
+    "seed": "u:1029771407"
+   },
+   "v": "u:4050590167"
+  },
+  {
+   "n": "xorshift32[seed=0xd857f90b].seed",
+   "in": {
+    "seed": "u:3629644043"
+   },
+   "v": "u:3383221424"
+  },
+  {
+   "n": "xorshift32[seed=0x1e30cbb2].seed",
+   "in": {
+    "seed": "u:506514354"
+   },
+   "v": "u:4019685937"
+  },
+  {
+   "n": "xorshift32[seed=0xbc39c7cf].seed",
+   "in": {
+    "seed": "u:3157903311"
+   },
+   "v": "u:483184719"
+  },
+  {
+   "n": "xorshift32[seed=0x05c10af9].seed",
+   "in": {
+    "seed": "u:96537337"
+   },
+   "v": "u:3076075126"
+  },
+  {
+   "n": "xorshift32[seed=0x7cc3dd6c].seed",
+   "in": {
+    "seed": "u:2093210988"
+   },
+   "v": "u:3936716219"
+  },
+  {
+   "n": "xorshift32[seed=0x3900f62a].seed",
+   "in": {
+    "seed": "u:956364330"
+   },
+   "v": "u:3748732104"
+  },
+  {
+   "n": "xorshift32[seed=0xc91c5c0e].seed",
+   "in": {
+    "seed": "u:3374078990"
+   },
+   "v": "u:287970624"
+  },
+  {
+   "n": "xorshift32[seed=0x975bb85d].seed",
+   "in": {
+    "seed": "u:2539370589"
+   },
+   "v": "u:3931989717"
+  },
+  {
+   "n": "xorshift32[seed=0xf06263bd].seed",
+   "in": {
+    "seed": "u:4032979901"
+   },
+   "v": "u:1051077463"
+  },
+  {
+   "n": "xorshift32[seed=0x4aadacc0].seed",
+   "in": {
+    "seed": "u:1252895936"
+   },
+   "v": "u:428849178"
+  },
+  {
+   "n": "xorshift32[seed=0x6a2d9c53].seed",
+   "in": {
+    "seed": "u:1781374035"
+   },
+   "v": "u:3981803648"
+  },
+  {
+   "n": "xorshift32[seed=0x1b07fd1b].seed",
+   "in": {
+    "seed": "u:453508379"
+   },
+   "v": "u:1882785385"
+  },
+  {
+   "n": "xorshift32[seed=0x20a3af50].seed",
+   "in": {
+    "seed": "u:547598160"
+   },
+   "v": "u:4235803508"
+  },
+  {
+   "n": "xorshift32[seed=0x716ceb72].seed",
+   "in": {
+    "seed": "u:1902963570"
+   },
+   "v": "u:1817801491"
+  },
+  {
+   "n": "xorshift32[seed=0x235e99da].seed",
+   "in": {
+    "seed": "u:593402330"
+   },
+   "v": "u:4241595624"
+  },
+  {
+   "n": "xorshift32[seed=0x063c9f73].seed",
+   "in": {
+    "seed": "u:104636275"
+   },
+   "v": "u:797181658"
+  },
+  {
+   "n": "xorshift32[seed=0x037a3844].seed",
+   "in": {
+    "seed": "u:58341444"
+   },
+   "v": "u:3391215069"
+  },
+  {
+   "n": "xorshift32[seed=0x4f757a88].seed",
+   "in": {
+    "seed": "u:1333099144"
+   },
+   "v": "u:3836041690"
+  },
+  {
+   "n": "xorshift32[seed=0x6870e57a].seed",
+   "in": {
+    "seed": "u:1752229242"
+   },
+   "v": "u:4012670389"
+  },
+  {
+   "n": "xorshift32[seed=0x30924245].seed",
+   "in": {
+    "seed": "u:814891589"
+   },
+   "v": "u:1669405480"
+  },
+  {
+   "n": "xorshift32[seed=0x60bf4967].seed",
+   "in": {
+    "seed": "u:1623148903"
+   },
+   "v": "u:3152959598"
+  },
+  {
+   "n": "xorshift32[seed=0x8e139a9a].seed",
+   "in": {
+    "seed": "u:2383649434"
+   },
+   "v": "u:1431577466"
+  },
+  {
+   "n": "xorshift32[seed=0xa1c3f407].seed",
+   "in": {
+    "seed": "u:2713973767"
+   },
+   "v": "u:925634406"
+  },
+  {
+   "n": "xorshift32[seed=0x9c90af06].seed",
+   "in": {
+    "seed": "u:2626727686"
+   },
+   "v": "u:2809486462"
+  },
+  {
+   "n": "xorshift32[seed=0xf42854ca].seed",
+   "in": {
+    "seed": "u:4096283850"
+   },
+   "v": "u:681318866"
+  },
+  {
+   "n": "xorshift32[seed=0x59891a07].seed",
+   "in": {
+    "seed": "u:1502157319"
+   },
+   "v": "u:603007747"
+  },
+  {
+   "n": "xorshift32[seed=0xe8d19aaa].seed",
+   "in": {
+    "seed": "u:3906050730"
+   },
+   "v": "u:2870106728"
+  },
+  {
+   "n": "xorshift32[seed=0x93e0e0b6].seed",
+   "in": {
+    "seed": "u:2480988342"
+   },
+   "v": "u:1899663085"
+  },
+  {
+   "n": "xorshift32[seed=0x7c3870ad].seed",
+   "in": {
+    "seed": "u:2084073645"
+   },
+   "v": "u:932241115"
+  },
+  {
+   "n": "xorshift32[seed=0x37fcda01].seed",
+   "in": {
+    "seed": "u:939317761"
+   },
+   "v": "u:992552895"
+  },
+  {
+   "n": "xorshift32[seed=0xd4958a39].seed",
+   "in": {
+    "seed": "u:3566570041"
+   },
+   "v": "u:3749806800"
+  },
+  {
+   "n": "xorshift32[seed=0x7da13576].seed",
+   "in": {
+    "seed": "u:2107716982"
+   },
+   "v": "u:989120209"
+  },
+  {
+   "n": "xorshift32[seed=0xcdec56fd].seed",
+   "in": {
+    "seed": "u:3454818045"
+   },
+   "v": "u:2705947108"
+  },
+  {
+   "n": "xorshift32[seed=0x3837f2ca].seed",
+   "in": {
+    "seed": "u:943190730"
+   },
+   "v": "u:196406877"
+  },
+  {
+   "n": "xorshift32[seed=0x5f943098].seed",
+   "in": {
+    "seed": "u:1603547288"
+   },
+   "v": "u:3916224315"
+  },
+  {
+   "n": "xorshift32[seed=0x0f67f69b].seed",
+   "in": {
+    "seed": "u:258471579"
+   },
+   "v": "u:3341362785"
+  },
+  {
+   "n": "xorshift32[seed=0xf2af70b9].seed",
+   "in": {
+    "seed": "u:4071583929"
+   },
+   "v": "u:2343797317"
+  },
+  {
+   "n": "xorshift32[seed=0xa4b37470].seed",
+   "in": {
+    "seed": "u:2763224176"
+   },
+   "v": "u:2376023214"
+  },
+  {
+   "n": "xorshift32[seed=0xbffca55b].seed",
+   "in": {
+    "seed": "u:3221005659"
+   },
+   "v": "u:1101909744"
+  },
+  {
+   "n": "xorshift32[seed=0x87d06d97].seed",
+   "in": {
+    "seed": "u:2278583703"
+   },
+   "v": "u:3325811814"
+  },
+  {
+   "n": "xorshift32[seed=0xe41aa109].seed",
+   "in": {
+    "seed": "u:3826950409"
+   },
+   "v": "u:3074489236"
+  },
+  {
+   "n": "xorshift32[seed=0x4e87003a].seed",
+   "in": {
+    "seed": "u:1317470266"
+   },
+   "v": "u:2122512442"
+  },
+  {
+   "n": "xorshift32[seed=0x607ffedb].seed",
+   "in": {
+    "seed": "u:1619001051"
+   },
+   "v": "u:1799286825"
+  },
+  {
+   "n": "xorshift32[seed=0x9317a806].seed",
+   "in": {
+    "seed": "u:2467801094"
+   },
+   "v": "u:2767993517"
+  },
+  {
+   "n": "xorshift32[seed=0x0541d267].seed",
+   "in": {
+    "seed": "u:88199783"
+   },
+   "v": "u:3735589313"
+  },
+  {
+   "n": "xorshift32[seed=0x1bf0143d].seed",
+   "in": {
+    "seed": "u:468718653"
+   },
+   "v": "u:931178566"
+  },
+  {
+   "n": "xorshift32[seed=0xcc322038].seed",
+   "in": {
+    "seed": "u:3425837112"
+   },
+   "v": "u:2392449122"
+  },
+  {
+   "n": "xorshift32[seed=0x9ba38a25].seed",
+   "in": {
+    "seed": "u:2611186213"
+   },
+   "v": "u:3054286230"
+  },
+  {
+   "n": "xorshift32[seed=0xb5fd3a78].seed",
+   "in": {
+    "seed": "u:3053271672"
+   },
+   "v": "u:1156863745"
+  },
+  {
+   "n": "xorshift32[seed=0xfec089dd].seed",
+   "in": {
+    "seed": "u:4274031069"
+   },
+   "v": "u:277912096"
+  },
+  {
+   "n": "xorshift32[seed=0x3f87bbfe].seed",
+   "in": {
+    "seed": "u:1065860094"
+   },
+   "v": "u:3623612354"
+  },
+  {
+   "n": "xorshift32[seed=0x7ce24ec0].seed",
+   "in": {
+    "seed": "u:2095206080"
+   },
+   "v": "u:2456870909"
+  },
+  {
+   "n": "xorshift32[seed=0x50956fdf].seed",
+   "in": {
+    "seed": "u:1351970783"
+   },
+   "v": "u:1353768040"
+  },
+  {
+   "n": "xorshift32[seed=0xc0d88086].seed",
+   "in": {
+    "seed": "u:3235414150"
+   },
+   "v": "u:3385668770"
+  },
+  {
+   "n": "xorshift32[seed=0xb2986ba8].seed",
+   "in": {
+    "seed": "u:2996333480"
+   },
+   "v": "u:1112260510"
+  },
+  {
+   "n": "xorshift32[seed=0xbb265abb].seed",
+   "in": {
+    "seed": "u:3139852987"
+   },
+   "v": "u:2119258851"
+  },
+  {
+   "n": "xorshift32[seed=0xb054bc48].seed",
+   "in": {
+    "seed": "u:2958343240"
+   },
+   "v": "u:3697826662"
+  },
+  {
+   "n": "xorshift32[seed=0x6649759b].seed",
+   "in": {
+    "seed": "u:1716090267"
+   },
+   "v": "u:1471941926"
+  },
+  {
+   "n": "xorshift32[seed=0x5f0b6c4e].seed",
+   "in": {
+    "seed": "u:1594584142"
+   },
+   "v": "u:1658066159"
+  },
+  {
+   "n": "xorshift32[seed=0x81b7135e].seed",
+   "in": {
+    "seed": "u:2176258910"
+   },
+   "v": "u:406893744"
+  },
+  {
+   "n": "xorshift32[seed=0x000492ce].seed",
+   "in": {
+    "seed": "u:299726"
+   },
+   "v": "u:3657328608"
+  },
+  {
+   "n": "xorshift32[seed=0x26a06980].seed",
+   "in": {
+    "seed": "u:648046976"
+   },
+   "v": "u:1503655240"
+  },
+  {
+   "n": "xorshift32[seed=0x4bc6711e].seed",
+   "in": {
+    "seed": "u:1271296286"
+   },
+   "v": "u:962301548"
+  },
+  {
+   "n": "xorshift32[seed=0x05950842].seed",
+   "in": {
+    "seed": "u:93653058"
+   },
+   "v": "u:926833548"
+  },
+  {
+   "n": "xorshift32[seed=0x18914a33].seed",
+   "in": {
+    "seed": "u:412174899"
+   },
+   "v": "u:187787736"
+  },
+  {
+   "n": "xorshift32[seed=0xaf5dec68].seed",
+   "in": {
+    "seed": "u:2942168168"
+   },
+   "v": "u:1221346560"
+  },
+  {
+   "n": "xorshift32[seed=0x4a8bc6db].seed",
+   "in": {
+    "seed": "u:1250674395"
+   },
+   "v": "u:2017935763"
+  },
+  {
+   "n": "xorshift32[seed=0x9b07c200].seed",
+   "in": {
+    "seed": "u:2600976896"
+   },
+   "v": "u:196708291"
+  },
+  {
+   "n": "xorshift32[seed=0x35e6e3df].seed",
+   "in": {
+    "seed": "u:904324063"
+   },
+   "v": "u:3660813617"
+  },
+  {
+   "n": "xorshift32[seed=0xfa9ed06e].seed",
+   "in": {
+    "seed": "u:4204712046"
+   },
+   "v": "u:854787271"
+  },
+  {
+   "n": "xorshift32[seed=0xee68d973].seed",
+   "in": {
+    "seed": "u:3999848819"
+   },
+   "v": "u:1570683344"
+  },
+  {
+   "n": "xorshift32[seed=0xa6ba608c].seed",
+   "in": {
+    "seed": "u:2797232268"
+   },
+   "v": "u:3218681593"
+  },
+  {
+   "n": "xorshift32[seed=0xb5cf0158].seed",
+   "in": {
+    "seed": "u:3050242392"
+   },
+   "v": "u:3915472618"
+  },
+  {
+   "n": "xorshift32[seed=0x1c5e3e6e].seed",
+   "in": {
+    "seed": "u:475938414"
+   },
+   "v": "u:2850154311"
+  },
+  {
+   "n": "xorshift32[seed=0x83aa0143].seed",
+   "in": {
+    "seed": "u:2208956739"
+   },
+   "v": "u:3015839938"
+  },
+  {
+   "n": "xorshift32[seed=0xbc6823c8].seed",
+   "in": {
+    "seed": "u:3160941512"
+   },
+   "v": "u:3124660160"
+  },
+  {
+   "n": "xorshift32[seed=0x2203821f].seed",
+   "in": {
+    "seed": "u:570655263"
+   },
+   "v": "u:441003231"
+  },
+  {
+   "n": "xorshift32[seed=0x0f79cacc].seed",
+   "in": {
+    "seed": "u:259640012"
+   },
+   "v": "u:4062866012"
+  },
+  {
+   "n": "xorshift32[seed=0x9b940a9f].seed",
+   "in": {
+    "seed": "u:2610170527"
+   },
+   "v": "u:1111169148"
+  },
+  {
+   "n": "xorshift32[seed=0x8cf525d9].seed",
+   "in": {
+    "seed": "u:2364876249"
+   },
+   "v": "u:562835006"
+  },
+  {
+   "n": "xorshift32[seed=0xa111f70f].seed",
+   "in": {
+    "seed": "u:2702309135"
+   },
+   "v": "u:1643857431"
+  },
+  {
+   "n": "xorshift32[seed=0xfca05ef1].seed",
+   "in": {
+    "seed": "u:4238368497"
+   },
+   "v": "u:415149198"
+  },
+  {
+   "n": "xorshift32[seed=0x06d52e03].seed",
+   "in": {
+    "seed": "u:114634243"
+   },
+   "v": "u:3249991337"
+  },
+  {
+   "n": "xorshift32[seed=0x4d6a2a1e].seed",
+   "in": {
+    "seed": "u:1298803230"
+   },
+   "v": "u:219426634"
+  },
+  {
+   "n": "xorshift32[seed=0xa9c1fe84].seed",
+   "in": {
+    "seed": "u:2848063108"
+   },
+   "v": "u:1412924428"
+  },
+  {
+   "n": "xorshift32[seed=0x58cb72e2].seed",
+   "in": {
+    "seed": "u:1489728226"
+   },
+   "v": "u:3832683657"
+  },
+  {
+   "n": "xorshift32[seed=0xcb9af01f].seed",
+   "in": {
+    "seed": "u:3415928863"
+   },
+   "v": "u:649199795"
+  },
+  {
+   "n": "xorshift32[seed=0x12a45997].seed",
+   "in": {
+    "seed": "u:312760727"
+   },
+   "v": "u:2873646812"
+  },
+  {
+   "n": "xorshift32[seed=0xac5d1062].seed",
+   "in": {
+    "seed": "u:2891780194"
+   },
+   "v": "u:3296443914"
+  },
+  {
+   "n": "xorshift32[seed=0x0a43b9a3].seed",
+   "in": {
+    "seed": "u:172210595"
+   },
+   "v": "u:3549103128"
+  },
+  {
+   "n": "xorshift32[seed=0x806050d7].seed",
+   "in": {
+    "seed": "u:2153795799"
+   },
+   "v": "u:3307489450"
+  },
+  {
+   "n": "xorshift32[seed=0x16d0c702].seed",
+   "in": {
+    "seed": "u:382781186"
+   },
+   "v": "u:3357573978"
+  },
+  {
+   "n": "xorshift32[seed=0x3793e1c0].seed",
+   "in": {
+    "seed": "u:932438464"
+   },
+   "v": "u:1054033589"
+  },
+  {
+   "n": "xorshift32[seed=0x972fea81].seed",
+   "in": {
+    "seed": "u:2536499841"
+   },
+   "v": "u:629147774"
+  },
+  {
+   "n": "xorshift32[seed=0xab3e951a].seed",
+   "in": {
+    "seed": "u:2873005338"
+   },
+   "v": "u:1243665236"
+  },
+  {
+   "n": "xorshift32[seed=0x427b4c84].seed",
+   "in": {
+    "seed": "u:1115376772"
+   },
+   "v": "u:1452341073"
+  },
+  {
+   "n": "xorshift32[seed=0x8fb353ce].seed",
+   "in": {
+    "seed": "u:2410894286"
+   },
+   "v": "u:1553384523"
+  },
+  {
+   "n": "xorshift32[seed=0x30644943].seed",
+   "in": {
+    "seed": "u:811878723"
+   },
+   "v": "u:2428684613"
+  },
+  {
+   "n": "xorshift32[seed=0x1a83e258].seed",
+   "in": {
+    "seed": "u:444850776"
+   },
+   "v": "u:3218273980"
+  },
+  {
+   "n": "xorshift32[seed=0x14530298].seed",
+   "in": {
+    "seed": "u:340984472"
+   },
+   "v": "u:4094110616"
+  },
+  {
+   "n": "xorshift32[seed=0xc1fec6d9].seed",
+   "in": {
+    "seed": "u:3254699737"
+   },
+   "v": "u:1033413419"
+  },
+  {
+   "n": "xorshift32[seed=0xf440c256].seed",
+   "in": {
+    "seed": "u:4097884758"
+   },
+   "v": "u:1833238067"
+  },
+  {
+   "n": "xorshift32[seed=0xecbf2f15].seed",
+   "in": {
+    "seed": "u:3971952405"
+   },
+   "v": "u:585956571"
+  },
+  {
+   "n": "xorshift32[seed=0xe5666cb9].seed",
+   "in": {
+    "seed": "u:3848694969"
+   },
+   "v": "u:920273121"
+  },
+  {
+   "n": "xorshift32[seed=0x87140d50].seed",
+   "in": {
+    "seed": "u:2266238288"
+   },
+   "v": "u:3514814447"
+  },
+  {
+   "n": "xorshift32[seed=0x97777e87].seed",
+   "in": {
+    "seed": "u:2541190791"
+   },
+   "v": "u:1817442388"
+  },
+  {
+   "n": "xorshift32[seed=0x0e90fad3].seed",
+   "in": {
+    "seed": "u:244382419"
+   },
+   "v": "u:681104630"
+  },
+  {
+   "n": "xorshift32[seed=0x80dc62ba].seed",
+   "in": {
+    "seed": "u:2161926842"
+   },
+   "v": "u:2649733919"
+  },
+  {
+   "n": "xorshift32[seed=0x4a00330f].seed",
+   "in": {
+    "seed": "u:1241527055"
+   },
+   "v": "u:3227472607"
+  },
+  {
+   "n": "xorshift32[seed=0xf1655812].seed",
+   "in": {
+    "seed": "u:4049950738"
+   },
+   "v": "u:377590017"
+  },
+  {
+   "n": "xorshift32[seed=0x02cd78bd].seed",
+   "in": {
+    "seed": "u:47020221"
+   },
+   "v": "u:378225744"
+  },
+  {
+   "n": "xorshift32[seed=0x59b2c863].seed",
+   "in": {
+    "seed": "u:1504888931"
+   },
+   "v": "u:392933308"
+  },
+  {
+   "n": "xorshift32[seed=0xc20a6744].seed",
+   "in": {
+    "seed": "u:3255461700"
+   },
+   "v": "u:1387701909"
+  },
+  {
+   "n": "xorshift32[seed=0x7d178745].seed",
+   "in": {
+    "seed": "u:2098693957"
+   },
+   "v": "u:840128250"
+  },
+  {
+   "n": "xorshift32[seed=0x613e6a3b].seed",
+   "in": {
+    "seed": "u:1631480379"
+   },
+   "v": "u:592633063"
+  },
+  {
+   "n": "xorshift32[seed=0x1bbc3c05].seed",
+   "in": {
+    "seed": "u:465320965"
+   },
+   "v": "u:463901051"
+  },
+  {
+   "n": "xorshift32[seed=0x73be71bb].seed",
+   "in": {
+    "seed": "u:1941860795"
+   },
+   "v": "u:211853471"
+  },
+  {
+   "n": "xorshift32[seed=0xbd1ced8e].seed",
+   "in": {
+    "seed": "u:3172789646"
+   },
+   "v": "u:889882328"
+  },
+  {
+   "n": "xorshift32[seed=0x6f17b24d].seed",
+   "in": {
+    "seed": "u:1863823949"
+   },
+   "v": "u:2996142754"
+  },
+  {
+   "n": "xorshift32[seed=0x6eb24882].seed",
+   "in": {
+    "seed": "u:1857177730"
+   },
+   "v": "u:3554767155"
+  },
+  {
+   "n": "xorshift32[seed=0xe38f18dd].seed",
+   "in": {
+    "seed": "u:3817806045"
+   },
+   "v": "u:302230135"
+  },
+  {
+   "n": "xorshift32[seed=0xe74ec1e4].seed",
+   "in": {
+    "seed": "u:3880698340"
+   },
+   "v": "u:3510212093"
+  },
+  {
+   "n": "xorshift32[seed=0x62fb8132].seed",
+   "in": {
+    "seed": "u:1660649778"
+   },
+   "v": "u:1231340508"
+  },
+  {
+   "n": "xorshift32[seed=0x5c3643ae].seed",
+   "in": {
+    "seed": "u:1547060142"
+   },
+   "v": "u:473626735"
+  },
+  {
+   "n": "xorshift32[seed=0xa084fa0c].seed",
+   "in": {
+    "seed": "u:2693069324"
+   },
+   "v": "u:3345602606"
+  },
+  {
+   "n": "xorshift32[seed=0x7e42fc40].seed",
+   "in": {
+    "seed": "u:2118319168"
+   },
+   "v": "u:412579845"
+  },
+  {
+   "n": "xorshift32[seed=0x2a5d4142].seed",
+   "in": {
+    "seed": "u:710754626"
+   },
+   "v": "u:3437055864"
+  },
+  {
+   "n": "xorshift32[seed=0xb901ddc7].seed",
+   "in": {
+    "seed": "u:3103907271"
+   },
+   "v": "u:3583438843"
+  },
+  {
+   "n": "xorshift32[seed=0x73519237].seed",
+   "in": {
+    "seed": "u:1934725687"
+   },
+   "v": "u:1677526332"
+  },
+  {
+   "n": "xorshift32[seed=0x0e56d4d4].seed",
+   "in": {
+    "seed": "u:240571604"
+   },
+   "v": "u:1296820466"
+  },
+  {
+   "n": "xorshift32[seed=0x62d24ccc].seed",
+   "in": {
+    "seed": "u:1657949388"
+   },
+   "v": "u:1110504521"
+  },
+  {
+   "n": "xorshift32[seed=0x52ba6a25].seed",
+   "in": {
+    "seed": "u:1387948581"
+   },
+   "v": "u:3760619162"
+  },
+  {
+   "n": "xorshift32[seed=0x3cad68d0].seed",
+   "in": {
+    "seed": "u:1017997520"
+   },
+   "v": "u:2807243115"
+  },
+  {
+   "n": "xorshift32[seed=0xe88c342d].seed",
+   "in": {
+    "seed": "u:3901502509"
+   },
+   "v": "u:2940061193"
+  },
+  {
+   "n": "xorshift32[seed=0xfe5ab68e].seed",
+   "in": {
+    "seed": "u:4267357838"
+   },
+   "v": "u:3119479723"
+  },
+  {
+   "n": "xorshift32[seed=0x4727df8a].seed",
+   "in": {
+    "seed": "u:1193795466"
+   },
+   "v": "u:638516673"
+  },
+  {
+   "n": "xorshift32[seed=0x56d40680].seed",
+   "in": {
+    "seed": "u:1456735872"
+   },
+   "v": "u:378133954"
+  },
+  {
+   "n": "xorshift32[seed=0xe8edd941].seed",
+   "in": {
+    "seed": "u:3907901761"
+   },
+   "v": "u:729793731"
+  },
+  {
+   "n": "xorshift32[seed=0x1fbe7ff4].seed",
+   "in": {
+    "seed": "u:532578292"
+   },
+   "v": "u:3629280596"
+  },
+  {
+   "n": "xorshift32[seed=0xa563691c].seed",
+   "in": {
+    "seed": "u:2774755612"
+   },
+   "v": "u:3226544828"
+  },
+  {
+   "n": "xorshift32[seed=0x758144cc].seed",
+   "in": {
+    "seed": "u:1971406028"
+   },
+   "v": "u:4261782080"
+  },
+  {
+   "n": "xorshift32[seed=0x2741ef1d].seed",
+   "in": {
+    "seed": "u:658632477"
+   },
+   "v": "u:1323961292"
+  },
+  {
+   "n": "xorshift32[seed=0xe9d273cd].seed",
+   "in": {
+    "seed": "u:3922883533"
+   },
+   "v": "u:1390117656"
+  },
+  {
+   "n": "xorshift32[seed=0xe0cbbb67].seed",
+   "in": {
+    "seed": "u:3771448167"
+   },
+   "v": "u:1665467956"
+  },
+  {
+   "n": "xorshift32[seed=0x17f0e606].seed",
+   "in": {
+    "seed": "u:401663494"
+   },
+   "v": "u:1832144990"
+  },
+  {
+   "n": "xorshift32[seed=0x28308da2].seed",
+   "in": {
+    "seed": "u:674270626"
+   },
+   "v": "u:153025888"
+  },
+  {
+   "n": "xorshift32[seed=0x7d52530c].seed",
+   "in": {
+    "seed": "u:2102547212"
+   },
+   "v": "u:3511343669"
+  },
+  {
+   "n": "xorshift32[seed=0xbb208490].seed",
+   "in": {
+    "seed": "u:3139470480"
+   },
+   "v": "u:3723032681"
+  },
+  {
+   "n": "xorshift32[seed=0xfacb9903].seed",
+   "in": {
+    "seed": "u:4207646979"
+   },
+   "v": "u:3030123318"
+  },
+  {
+   "n": "xorshift32[seed=0x92360f8c].seed",
+   "in": {
+    "seed": "u:2453016460"
+   },
+   "v": "u:724790159"
+  },
+  {
+   "n": "xorshift32[seed=0x98482bcd].seed",
+   "in": {
+    "seed": "u:2554866637"
+   },
+   "v": "u:990474229"
+  },
+  {
+   "n": "xorshift32[seed=0x158d815d].seed",
+   "in": {
+    "seed": "u:361595229"
+   },
+   "v": "u:292029006"
+  },
+  {
+   "n": "xorshift32[seed=0x4124c4fe].seed",
+   "in": {
+    "seed": "u:1092928766"
+   },
+   "v": "u:4007029827"
+  },
+  {
+   "n": "xorshift32[seed=0xe6aff4cf].seed",
+   "in": {
+    "seed": "u:3870291151"
+   },
+   "v": "u:519373396"
+  },
+  {
+   "n": "xorshift32[seed=0xd703ccbd].seed",
+   "in": {
+    "seed": "u:3607350461"
+   },
+   "v": "u:2081637655"
+  },
+  {
+   "n": "xorshift32[seed=0xfceab714].seed",
+   "in": {
+    "seed": "u:4243240724"
+   },
+   "v": "u:3942916112"
+  },
+  {
+   "n": "xorshift32[seed=0x6e922167].seed",
+   "in": {
+    "seed": "u:1855070567"
+   },
+   "v": "u:2103726904"
+  },
+  {
+   "n": "xorshift32[seed=0x90c360dc].seed",
+   "in": {
+    "seed": "u:2428723420"
+   },
+   "v": "u:1741375664"
+  },
+  {
+   "n": "xorshift32[seed=0x49924486].seed",
+   "in": {
+    "seed": "u:1234322566"
+   },
+   "v": "u:559023335"
+  },
+  {
+   "n": "xorshift32[seed=0x4db826fe].seed",
+   "in": {
+    "seed": "u:1303914238"
+   },
+   "v": "u:1704954861"
+  },
+  {
+   "n": "xorshift32[seed=0x6892a34d].seed",
+   "in": {
+    "seed": "u:1754440525"
+   },
+   "v": "u:2744695600"
+  },
+  {
+   "n": "xorshift32[seed=0xfaffe9fa].seed",
+   "in": {
+    "seed": "u:4211075578"
+   },
+   "v": "u:4292208986"
+  }
+ ]
+}

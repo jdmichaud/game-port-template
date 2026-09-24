@@ -1,0 +1,35 @@
+{
+ "schema": "testkit-case/1",
+ "id": "calibration.recorded.altered",
+ "driver": "recorded",
+ "reference": {
+  "class": "specified-contract",
+  "status": "verified",
+  "evidence": "negative control: the candidate has one altered value at index 5 (u:25 -> u:26)",
+  "redistribution": "redistributable",
+  "source": {
+   "tool": "hand-written",
+   "notes": "runner calibration"
+  }
+ },
+ "inputs": {
+  "files": [
+   {
+    "path": "tests/public/data/pair-a.obs.json",
+    "sha256": "fe0e7e309468299e0430fd4738c47d972094d2c497722eed09755cd4dcb1eb2e"
+   },
+   {
+    "path": "tests/public/data/pair-altered.obs.json",
+    "sha256": "da82f4c331b873cd957b79e8ce78efc9542e8e2a063a3dc6db990b279bc8ed90"
+   }
+  ]
+ },
+ "config": {
+  "candidate": "tests/public/data/pair-altered.obs.json"
+ },
+ "expected_file": "tests/public/data/pair-a.obs.json",
+ "expected_verdict": "mismatch",
+ "bounds": {
+  "wall_clock_ms": 10000
+ }
+}

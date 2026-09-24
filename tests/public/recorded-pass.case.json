@@ -1,0 +1,35 @@
+{
+ "schema": "testkit-case/1",
+ "id": "calibration.recorded.pass",
+ "driver": "recorded",
+ "reference": {
+  "class": "specified-contract",
+  "status": "verified",
+  "evidence": "two hand-written observation files with identical observations and different producers",
+  "redistribution": "redistributable",
+  "source": {
+   "tool": "hand-written",
+   "notes": "runner calibration"
+  }
+ },
+ "inputs": {
+  "files": [
+   {
+    "path": "tests/public/data/pair-a.obs.json",
+    "sha256": "fe0e7e309468299e0430fd4738c47d972094d2c497722eed09755cd4dcb1eb2e"
+   },
+   {
+    "path": "tests/public/data/pair-b.obs.json",
+    "sha256": "1794b4be4cac202799fb7bf2476019ba0758cbce3eeb40729ed829aaf0892a81"
+   }
+  ]
+ },
+ "config": {
+  "candidate": "tests/public/data/pair-b.obs.json"
+ },
+ "expected_file": "tests/public/data/pair-a.obs.json",
+ "expected_verdict": "pass",
+ "bounds": {
+  "wall_clock_ms": 10000
+ }
+}

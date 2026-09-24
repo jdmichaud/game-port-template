@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gameport</title>
+<link rel="icon" href="data:,">
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  body { display: flex; align-items: center; justify-content: center; }
+  canvas { display: block; outline: none; image-rendering: pixelated; image-rendering: crisp-edges; }
+  #overlay {
+    position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; background: #000; color: #e0e0e0; font: bold 16px monospace;
+    user-select: none;
+  }
+  #overlay.ready { cursor: pointer; }
+  #overlay.hidden { display: none; }
+</style>
+</head>
+<body>
+<canvas id="screen" width="320" height="200" tabindex="0"></canvas>
+<div id="overlay"><div id="message">Loading…</div></div>
+<script src="gameport.js"></script>
+</body>
+</html>

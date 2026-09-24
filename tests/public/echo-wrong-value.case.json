@@ -1,0 +1,49 @@
+{
+ "schema": "testkit-case/1",
+ "id": "calibration.echo.wrong-value",
+ "driver": "synthetic.echo",
+ "reference": {
+  "class": "specified-contract",
+  "status": "verified",
+  "evidence": "negative control: the second value is deliberately wrong; the verdict must be mismatch at index 1",
+  "redistribution": "redistributable",
+  "source": {
+   "tool": "hand-written",
+   "notes": "runner calibration"
+  }
+ },
+ "config": {
+  "values": [
+   {
+    "n": "a",
+    "v": "u:1"
+   },
+   {
+    "n": "b",
+    "v": "i:-3"
+   },
+   {
+    "n": "c",
+    "v": "x:ff"
+   }
+  ]
+ },
+ "expected": [
+  {
+   "n": "a",
+   "v": "u:1"
+  },
+  {
+   "n": "b",
+   "v": "i:-2"
+  },
+  {
+   "n": "c",
+   "v": "x:ff"
+  }
+ ],
+ "expected_verdict": "mismatch",
+ "bounds": {
+  "wall_clock_ms": 10000
+ }
+}

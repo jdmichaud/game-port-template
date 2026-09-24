@@ -1,0 +1,35 @@
+{
+ "schema": "testkit-case/1",
+ "id": "calibration.bad-digest",
+ "driver": "recorded",
+ "reference": {
+  "class": "specified-contract",
+  "status": "verified",
+  "evidence": "negative control: the listed digest of an input is wrong",
+  "redistribution": "redistributable",
+  "source": {
+   "tool": "hand-written",
+   "notes": "runner calibration"
+  }
+ },
+ "inputs": {
+  "files": [
+   {
+    "path": "tests/public/data/pair-a.obs.json",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+   },
+   {
+    "path": "tests/public/data/pair-b.obs.json",
+    "sha256": "1794b4be4cac202799fb7bf2476019ba0758cbce3eeb40729ed829aaf0892a81"
+   }
+  ]
+ },
+ "config": {
+  "candidate": "tests/public/data/pair-b.obs.json"
+ },
+ "expected_file": "tests/public/data/pair-a.obs.json",
+ "expected_verdict": "reference_error",
+ "bounds": {
+  "wall_clock_ms": 10000
+ }
+}

@@ -1,0 +1,25 @@
+.{
+    .name = .gameport,
+    .version = "0.1.0",
+    // Each port has its own: the rename of README.md puts in the value that `zig build`
+    // suggests for the new name.
+    .fingerprint = 0x15a057f38600fd95,
+    .minimum_zig_version = "0.17.0",
+    .dependencies = .{
+        .sdl2 = .{
+            .url = "git+https://github.com/allyourcodebase/SDL?ref=SDL2#eeba46bd2f847355b0bcf41b38380beffb395779",
+            .hash = "SDL-2.32.10-JToi37O3EgEYuel13OaBpZXIS406c6ykvPFrqm-u1X8W",
+            // Only a Windows build fetches it: SDL2 from source, built by Zig (build.zig).
+            .lazy = true,
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "tests",
+        "tools",
+        "docs",
+        "README.md",
+    },
+}
