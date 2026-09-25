@@ -257,21 +257,15 @@ function gameportHelpers(memory) {
   // lock only for a click: the click that takes the lock belongs to the page, not to the game.
   const pointer = { wanted: false, locked: false, swallowUp: false, x: 0, y: 0, restX: 0, restY: 0 };
 
-  // The counts without the system's pointer acceleration where the browser can, as the native
-  // host reads them; else the plain lock.
+  // The plain lock, without `unadjustedMovement`: with it, the motion stopped at the window's
+  // border in Chrome and Edge on a Windows PC (docs/lessons.md). The plain lock is the one that
+  // brings the hidden cursor back to the middle of the window, at the price of the system's
+  // pointer acceleration.
   function requestLock() {
-    const fallback = () => {
-      try {
-        const again = canvas.requestPointerLock();
-        if (again && again.catch) again.catch(() => {});
-      } catch (e) { /* The browser refused; the next click asks again. */ }
-    };
     try {
-      const request = canvas.requestPointerLock({ unadjustedMovement: true });
-      if (request && request.catch) request.catch(fallback);
-    } catch (e) {
-      fallback();
-    }
+      const request = canvas.requestPointerLock();
+      if (request && request.catch) request.catch(() => {});
+    } catch (e) { /* The browser refused; the next click asks again. */ }
   }
 
   function setRelativeMouse(enabled) {

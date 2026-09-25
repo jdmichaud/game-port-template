@@ -325,6 +325,15 @@ means accepted into a bounded queue; received messages arrive through `pollEvent
 transport is decision D2 of the plan (in a previous port, the native game served the browser build
 and a WebSocket on one port).
 
+Two browsers can also play with no native game (in a previous port, `--server ADDRESS:PORT`). The
+native program then only serves the page and relays the session's binary messages between two
+WebSockets; the first browser to connect is the host. The server tells each page its role in a
+text message (`host`, `guest`), and tells the host when its guest arrives and leaves (`peer`,
+`left`). The host's page shows its guest to the module as a connection of its own, so the game's
+host logic needs no listening socket; its manifest says it is a relay, so the page reports the
+connection open only after its role. A host that leaves ends its guest's connection, and the next
+browser to join hosts.
+
 The original's own protocol, if the port must talk to the original, is a separate adapter: an
 offline codec from captured packets first, then its session rules.
 
