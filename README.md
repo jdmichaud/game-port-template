@@ -52,7 +52,9 @@ The placeholder name of the project is `gameport`.
    placeholders where the game decides. Fill in the scope and the gate of the first items, and
    commit the plan before the work starts.
 5. **Check the start.** The steps are listed at the top of `build.zig`: `zig build`, `zig build
-   test` and the two suites pass on the skeleton before the first change.
+   test` and the two suites pass on the skeleton before the first change. `zig build all` builds
+   every binary at once: this machine's, Windows's under `zig-out/windows`, and the browser build
+   (with `-Dembed-assets`, the standalone too, for both systems).
 6. **Replace the placeholder game.** `src/shared/game.zig` is where the real game grows, behind
    the same platform contracts that the hosts already drive.
 

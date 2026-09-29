@@ -11,7 +11,9 @@
 //! build and checks its module's imports; `web-check` checks the page's helper functions against
 //! compiler-rt (it needs Node.js); `test` runs the unit tests of every module; `test-public` and
 //! `test-reference` run the two scenario suites; `smoke` runs the agent host over a short synthetic
-//! script; `verify` checks that the agent binary has no SDL dependency.
+//! script; `verify` checks that the agent binary has no SDL dependency; `all` installs every
+//! binary of the target and of Windows (under <prefix>/windows), the browser build, and the
+//! standalone when -Dembed-assets is given.
 const std = @import("std");
 const builtin = @import("builtin");
 
@@ -336,6 +338,30 @@ pub fn build(b: *std.Build) void {
     no_sdl.addArtifactArg(agent_exe);
     no_sdl.expectExitCode(0);
     b.step("verify", "Check the agent host binary links no SDL library").dependOn(&no_sdl.step);
+
+    // `all`: every binary of the target and of Windows, the browser build, and the standalone
+    // when its game files are given. The Windows binaries come from a second build for the
+    // Windows target, run by this step alone, into <prefix>/windows: a build of any other step
+    // never asks for the SDL2 package, which only a Windows build fetches.
+    const all_step = b.step("all", "Build and install every binary: the target's, Windows's under <prefix>/windows, the browser build, and the standalone when -Dembed-assets is given");
+    all_step.dependOn(b.getInstallStep());
+    all_step.dependOn(web_step);
+    if (embed_assets != null) all_step.dependOn(standalone_step);
+    if (target.result.os.tag != .windows) {
+        const windows = b.addSystemCommand(&.{ b.graph.zig_exe, "build", "install", "-Dtarget=x86_64-windows-gnu" });
+        windows.addArg(b.fmt("-Doptimize={s}", .{@tagName(optimize)}));
+        // The paths of this build, which only the make phase knows: its prefix and its cache. The
+        // global cache comes with the environment.
+        const absolute: std.Build.Step.Run.PathArgOptions = .{ .make_absolute = true };
+        windows.addArg("--prefix");
+        windows.addDirectoryArg2(.{ .relative = .{ .base = .install_prefix, .sub_path = "windows" } }, absolute);
+        windows.addArg("--cache-dir");
+        windows.addDirectoryArg2(.{ .relative = .{ .base = .local_cache } }, absolute);
+        if (embed_assets) |path| windows.addArgs(&.{ "standalone", b.fmt("-Dembed-assets={s}", .{path}) });
+        windows.setCwd(b.path("."));
+        windows.has_side_effects = true;
+        all_step.dependOn(&windows.step);
+    }
 }
 
 /// Links SDL2 into `m`, and records the SDL2 version that pkg-config reports as the `sdl` build
