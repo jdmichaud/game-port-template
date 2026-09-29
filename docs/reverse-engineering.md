@@ -51,8 +51,8 @@ previous port drove a decompiler's p-code emulator through its own small tool.
 - **Whole flows** (a computer player's turn, a rules decision) can run the same way from a memory
   dump of the running game.
 
-The outputs become observation files in `tests/reference/data`, with the tool's revision and the
-executable's digest.
+The outputs become reference data in the repository (`docs/testing.md`), with the tool's revision
+and the executable's digest.
 
 ### The original under an emulator
 

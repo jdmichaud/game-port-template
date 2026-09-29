@@ -18,8 +18,8 @@ Rules:
 - Link native binaries statically when practical. Depend on a dynamic library only when no other
   practical choice is possible.
 - Build and test with the repository alone. No file of the original game and no capture of it is
-  in the repository or needed by a build or a test, except the standalone build, which embeds the
-  game's files from a copy the user supplies. Recorded measurements of the original's behaviour
+  in the repository or needed by a build or a test (a build that embeds the game's files takes
+  them from a copy the user supplies). Recorded measurements of the original's behaviour
   (traces, routine outputs, decisions) may be committed as test data; tests that need game data
   use synthetic data. No personal paths or identifiers in committed files.
 - Verify before claiming. Reproduce a report in the build the user runs before changing code, and

@@ -25,16 +25,19 @@ errors, memory ownership, asynchronous operations and the frame format explicit.
   browser build.
 - **Static linking where practical** (section 8).
 - **The repository stands alone.** No file of the original enters the repository, and no build or
-  test needs one, except the standalone build that embeds a copy the user supplies (PLAN.md, S1).
+  test needs one; a build that embeds the game's files takes a copy the user supplies.
 
 ## 2. The platform boundary
 
 The application composes three interfaces:
 
-- `Platform`: the lifecycle, the I/O workflows, events, time, presentation, PCM output and the
-  transport. Implemented by the SDL backend, the browser backend and the agent backend.
-- `AssetSource`: named, read-only game files, listed and read. Implemented over an ISO image, a
-  directory, memory, and the files embedded in the standalone build.
+- `Platform`: the lifecycle, events, time, presentation, PCM output and mouse capture.
+  Implemented by the SDL backend, the browser backend and the agent backend. A port adds the
+  calls its game needs to all three: a transport for network play (section 9), I/O jobs that run
+  beside the frame (section 4).
+- `AssetSource`: named, read-only game files, listed and read. Implemented over a directory and
+  memory; a port adds the sources its game needs (a CD image, files embedded in the executable,
+  an overlay of mod files over the original's).
 - `Storage`: persistent named byte records and their listing. Implemented over a directory, the
   browser's storage, and memory.
 
@@ -47,8 +50,7 @@ and produces state changes and events. The application coordinates I/O and prese
 it. There are no globals: a game is a value.
 
 The host implementation is chosen at build time and passed as explicit instances. The asset
-source is chosen at run time (a CD image or a directory on the command line, or the embedded
-files of the standalone build).
+source is chosen at run time (a game directory on the command line in the skeleton).
 
 ## 3. Platform contracts
 
@@ -135,10 +137,11 @@ fn readAll(path: []const u8, max_bytes: usize) !OwnedBytes; // shared helper ove
 ```
 
 Asset names are validated ASCII logical names, matched the way the original's file system
-matched them (DOS rules). Each source converts its own names: the ISO reader drops version
-suffixes, the directory source keeps the host's encoding. The ISO reader is shared code over a
-byte source, so the same parser serves a native file, memory and a browser blob. An overlay
-policy decides which source answers first (for example, a user configuration file over the CD's).
+matched them (DOS rules). Each source converts its own names: the directory source keeps the
+host's encoding; an ISO 9660 reader, if the port reads the CD image directly, drops version
+suffixes. Such a reader belongs in shared code over a byte source, so the same parser serves a
+native file, memory and a browser blob. An overlay decides which source answers first (for
+example, a user configuration file or a mod's files over the CD's).
 
 ### 3.6 Storage
 
@@ -158,7 +161,8 @@ record. Storage holds bytes; the formats are shared code (section 7).
 - Inputs (paths, names, bytes, destinations) are borrowed for the duration of a call. Providers
   keep no borrow after returning.
 - Returned buffers and listings belong to the caller until their `deinit`.
-- Received network messages stay valid until the next `pollEvents`.
+- Received network messages, once a port has a transport, stay valid until the next
+  `pollEvents`.
 - A handle outlives every call that uses it; its owner closes it.
 
 ### 3.8 Text
@@ -169,21 +173,22 @@ record. Storage holds bytes; the formats are shared code (section 7).
   is: spacing codes, kerning and border glyphs are part of the drawing.
 - Host paths and host text keep the platform's encoding.
 
-## 4. Execution: the host loop and the I/O workflows
+## 4. Execution: the host loop and I/O
 
-An I/O workflow is a finite job: load and decode a file, prepare a set of assets, write a save,
-fill one film buffer. It includes the decoding that produces its result.
+The skeleton reads its files and writes its saves inside an update, through the providers. That
+is enough while every read is small or the files are in memory (the browser build fetches them
+all before the first update).
 
-The backend runs **one workflow at a time** from a bounded queue (`src/shared/workflow.zig`, the
-native executor in `src/native`). The game submits workflows, and takes their completed results
-at update boundaries. Why one at a time: the order of completion is then defined, which the agent
-host's reproducible runs need; the queue and the buffers are bounded; and the same model runs in
-a browser, where a suspended task cannot overlap another without extra stack management. A
-workflow never runs inside the frame: waiting for a disk must not stall input or drawing.
-
-The agent host completes workflows inline and publishes their results under control, so a run
-replays exactly. The native executor uses `std.Io`; the browser completes its reads through the
-page.
+When a read would stall the frame (a large load, a film streamed from the CD), the port adds I/O
+workflows to the platform contract. A workflow is a finite job: load and decode a file, prepare a
+set of assets, write a save, fill one film buffer, with the decoding that produces its result.
+Previous ports ran **one workflow at a time** from a bounded queue: the game submits workflows and
+takes their completed results at update boundaries. Why one at a time: the order of completion is
+then defined, which the agent host's reproducible runs need; the queue and the buffers are
+bounded; and the same model runs in a browser, where a suspended task cannot overlap another
+without extra stack management. A workflow never runs inside the frame: waiting for a disk must
+not stall input or drawing. The agent host completes workflows inline, so a run replays exactly;
+the native executor uses `std.Io`; the browser completes its reads through the page.
 
 Loading, menus, films, computer players and shutdown are phases of the game, advanced by bounded
 updates. A required save keeps the shutdown phase alive until it is written.
@@ -201,25 +206,27 @@ A headless host for scripted runs and debugging. It links no SDL and needs no wi
 device or input device; it implements the same platform contracts, so rendering, input
 interpretation, audio scheduling and loading run through the same code as in the game.
 
-- A JSON-lines protocol on standard input and output (`src/agent/host.zig`); diagnostics go
-  to standard error.
-- A virtual clock: time advances only when a command says so, never with the time an agent spends
+- A virtual clock: time advances only when the host says so, never with the time an agent spends
   thinking.
-- Commands to reset, inject timestamped events, step a number of updates or run until a
-  condition, inspect state, capture the frame and the PCM. Every run has work, virtual-time and
-  wall-clock limits, and the response says which one ended it.
+- The skeleton's host runs a number of frames, presses the keys named on the command line at
+  their frames, and prints one JSON line: counters, the state's hash and the last frame's hash.
+  Diagnostics go to standard error.
 - Saves go to an in-memory store or to a directory the caller names; never to the user's.
-- The test runner's `agent.scenario` driver runs the same host in its own process.
+
+A port grows it with the game: previous ports gave it a JSON-lines protocol on standard input
+and output, with commands to reset, inject timestamped events, step a number of updates or run
+until a condition, inspect state, and capture the frame and the PCM, each run bounded by work,
+virtual-time and wall-clock limits that the response names. Grow only what the checks use.
 
 The agent host is how the port is driven end to end without a display, and how a test reproduces
 a defect. It is not the game the user runs: gates also run the SDL build (`docs/testing.md`).
 
 ### 5.2 The SDL host (`gameport-sdl`)
 
-The interactive game on Linux and Windows. The first positional argument names the CD image or the
-game directory. Options select the window scale, a software renderer, an event log on standard
-output (the same JSON the agent host's `inject` reads, so a played session replays headlessly),
-a run time, and the saves directory. Its updates are paced by the display when the renderer
+The interactive game on Linux and Windows. The first positional argument names the game
+directory. Options select the window scale, a software renderer, an event log on standard output
+(JSON lines, so a played session can be replayed headlessly once the agent host reads them), a
+run time, and the saves directory. Its updates are paced by the display when the renderer
 presents in step with it, and by a fallback pacer otherwise: a loop that presents nothing must
 not spin.
 
@@ -231,7 +238,7 @@ usable, and it declares itself DPI-aware (section 8).
 
 The shared game compiled for `wasm32-freestanding`: no libc, no compiler-rt and no entry point.
 The page's hand-written JavaScript creates the memory, provides the host functions (canvas
-presentation, input with pointer lock, Web Audio, storage, the transport) and the few helper
+presentation, input with pointer lock, Web Audio, storage) and the few helper
 functions the compiler emits calls to (128-bit multiply and divide, and the math functions the
 code uses), and calls one update per animation frame. The build checks the module's list of
 imports: an unexpected import is an error, and each helper is tested against compiler-rt.
@@ -239,17 +246,19 @@ imports: an unexpected import is an error, and each helper is tested against com
 When every file the game needs is fetched before the first update, the module needs no
 suspension mechanism. Only a game that must stream files during play needs one (Asyncify, with a
 pinned `wasm-opt`, a sized continuation buffer and a larger module; or JSPI where browsers
-support it), behind the same workflow interface.
+support it), behind the I/O workflows of section 4.
 
 The browser keeps the game's records in its own storage, per address, and gives them back before
 the game starts.
 
-### 5.4 The standalone build
+### 5.4 A build with the game's files inside (optional)
 
-`zig build standalone -Dembed-assets=<CD image or directory>` builds the SDL game with the
-gameplay files built in, from an explicit list (`tools/embed_assets.zig`). It is the one build
-that reads the original's files. Large optional content (films) may be left out; the game then
-disables what needs it.
+A port may offer an SDL game with the gameplay files built in, for users who own the original:
+a build option names the user's copy (a CD image or a directory), a packer that runs on the build
+machine copies an explicit list of files into a generated module, and that module is one more
+`AssetSource`. It is then the one build that reads the original's files, and its output is never
+committed or distributed with the repository. Large optional content (films) may be left out;
+the game then disables what needs it.
 
 ## 6. Determinism and state
 
@@ -269,8 +278,8 @@ disables what needs it.
 
 ## 7. Assets and saves
 
-- **Assets.** The original's files are read at run time from the CD image or a directory, or from
-  the standalone build. The port never commits them.
+- **Assets.** The original's files are read at run time from the game directory (or whatever
+  source the port adds: a CD image, files built in). The port never commits them.
 - **Saves.** One versioned format per kind of record (settings, a game in progress, ...). A record
   of another version is refused, not converted: no readers for old versions.
 - **The original's own files** (its saves, its configuration) are the original's formats, read
@@ -280,12 +289,10 @@ disables what needs it.
 
 The toolchain is pinned (`build.zig.zon`, `build.zig`). The modules, and what each links:
 
-- `gameport` (`src/shared`), nothing: the game, the platform contracts, the in-memory providers
-  and the ISO reader.
-- `testkit`, nothing: cases, observations, comparison, verdicts and reports.
+- `gameport` (`src/shared`), nothing: the game, the platform contract and the in-memory
+  providers.
 - `agent`, nothing: the agent backend and host.
-- `native`, nothing: host I/O, with the directory and ISO sources, the storage and the workflow
-  executor.
+- `native`, nothing: host I/O: the directory source and storage, and the command line.
 - `sdl`, libc and SDL2: the SDL backend and host.
 
 - **Linux.** SDL2 is linked from its static archive; the system libraries it needs (X11, Wayland,
@@ -311,7 +318,9 @@ use the same typed commands, and shared game logic checks their legality.
 - The game logic and the simulation apply validated commands and expose state and outcomes.
 - The session protocol adapter, in shared code, encodes and decodes messages and keeps the
   handshake, the ordering, the acknowledgements, the retries and the epochs.
-- The platform transport moves messages and reports connection events.
+- The platform transport moves messages and reports connection events. The skeleton has none:
+  the port adds it to the platform contract (connect, listen, send, close; connected,
+  disconnected and received events) and to each backend.
 
 The port's own protocol is versioned: a handshake (protocol and simulation versions, asset
 identity, rules, players, initial state), commands proposed by the active player and ordered by

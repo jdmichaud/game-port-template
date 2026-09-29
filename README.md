@@ -10,15 +10,17 @@ The template has two parts:
   (`DESIGN.md`), and the notes in `docs/` on the process, the tests, the study of the original and
   the lessons learned.
 - **A skeleton that builds and tests as it is.** The platform boundary, the three hosts (a
-  headless agent host, an SDL host and a browser build), the test runner with its two suites, and
-  a placeholder game in place of the real one.
+  headless agent host, an SDL host and a browser build) and a placeholder game in place of the
+  real one. It holds what every port needs the same way; what depends on the game (a network
+  link, background I/O, a test runner, a build with the game's files inside) is described in
+  `DESIGN.md` and `docs/testing.md` and grown by the port when its game asks for it.
 
 The placeholder name of the project is `gameport`.
 
 ## Starting a port
 
 1. **Copy the folder and name the project.** The name becomes the Zig module, the binaries
-   (`mygame-agent`, `mygame-sdl`, `mygame-test`) and the browser files, so it must be a lowercase
+   (`mygame-agent`, `mygame-sdl`) and the browser files, so it must be a lowercase
    Zig identifier that is not a keyword: letters, digits and underscores. Replace `gameport`
    everywhere, in the contents and in the file names, give the package its own fingerprint, and
    start the port's own history:
@@ -37,13 +39,9 @@ The placeholder name of the project is `gameport`.
    git init && git add -A && git commit -m "Start mygame from the game port template"
    ```
 
-   The test formats keep their `testkit-` names: they belong to the test kit, not to the game, so
-   the rename leaves the recorded data and its digests as they are.
-
 2. **Keep the original out of the repository.** The CD image, the installed game, captures of it
-   and the tools that study it live outside the repository. Only the standalone build reads the
-   game's files, to embed them. Recorded measurements of the original's behaviour may be
-   committed as test data (`docs/testing.md`).
+   and the tools that study it live outside the repository. Recorded measurements of the
+   original's behaviour may be committed as test data (`docs/testing.md`).
 3. **Write the game into `DESIGN.md`.** Its TODO sections describe the original: the executable,
    the video modes, the sound hardware, the input devices, the network, and the subsystems that
    the port maps will cover. The rest of the design applies as it is; change it only with the
@@ -52,9 +50,9 @@ The placeholder name of the project is `gameport`.
    placeholders where the game decides. Fill in the scope and the gate of the first items, and
    commit the plan before the work starts.
 5. **Check the start.** The steps are listed at the top of `build.zig`: `zig build`, `zig build
-   test` and the two suites pass on the skeleton before the first change. `zig build all` builds
-   every binary at once: this machine's, Windows's under `zig-out/windows`, and the browser build
-   (with `-Dembed-assets`, the standalone too, for both systems).
+   test` and `zig build smoke` pass on the skeleton before the first change. `zig build all`
+   builds every binary at once: this machine's, Windows's under `zig-out/windows`, and the browser
+   build.
 6. **Replace the placeholder game.** `src/shared/game.zig` is where the real game grows, behind
    the same platform contracts that the hosts already drive.
 
@@ -71,19 +69,14 @@ The placeholder name of the project is `gameport`.
 - `docs/port-map-template.md`: the outline of a subsystem's port map.
 - `docs/lessons.md`: the lessons and traps of previous ports that apply to any port.
 - `src/shared`: the `gameport` module, the game and everything the targets share. It links
-  nothing. `platform.zig` holds the platform contracts, `workflow.zig` the interface of the I/O
-  workflow executor, `memory.zig` the in-memory providers, `iso.zig` the ISO 9660 reader, and
+  nothing. `platform.zig` holds the platform contract, `memory.zig` the in-memory providers, and
   `game.zig` the placeholder game.
-- `src/testkit`: cases, typed observations, comparison, verdicts and reports. It depends only on
-  the standard library.
-- `src/testrunner`: `gameport-test`, the scenario runner, and its drivers.
-- `src/agent`: `gameport-agent`, the headless host: the agent backend and the JSON-lines host,
-  whose commands `host.zig` lists. It never links SDL.
-- `src/native`: host I/O for the native targets: the directory and ISO asset sources, the storage,
-  the workflow executor and the command line.
+- `src/agent`: `gameport-agent`, the headless host: the agent backend under a virtual 60 Hz clock
+  and a frame runner that injects keys and prints one JSON line of counters and digests. It never
+  links SDL. A port grows it into the driver its checks need.
+- `src/native`: host I/O for the native targets: the directory asset source, the directory
+  storage, their shared contract tests, and the command line.
 - `src/sdl`: `gameport-sdl`, the interactive host on SDL2, for Linux and Windows.
 - `src/web`: the browser build: the WebAssembly module, its backend, the page and its script.
-- `tests/public`: synthetic and redistributable test cases.
-- `tests/reference`: cases whose expectations are recordings of the original's behaviour.
-- `tools`: build helpers only: the check that the agent binary links no SDL, and the asset
-  embedding of the standalone build. Tools that study the original do not belong here.
+- `tools`: build helpers only: the check that the agent binary links no SDL. Tools that study the
+  original do not belong here.

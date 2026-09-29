@@ -1,15 +1,16 @@
 # Testing
 
-What is tested, how, and what the tests may read. The contracts are in code: `src/testkit` (cases,
-observations, verdicts, reports) and `src/agent/host.zig` (the agent host's commands).
+What is tested, how, and what the tests may read. The skeleton has unit tests, the provider
+contract cases (`src/native/contract.zig`) and a headless smoke run; the harness beyond them
+depends on the game, and the port builds it as its checks need (below).
 
 ## Before every commit
 
 - `zig build test`: the unit tests of every module. **No test is skipped**: the summary says
   "N pass (N total)".
-- `zig build test-public` and `zig build test-reference`: the two scenario suites.
-- `zig build smoke` (the agent host over a synthetic script) and `zig build verify` (the agent
-  binary links no SDL).
+- The port's own suites, once it has them.
+- `zig build smoke` (the agent host for a few frames, with a save and a load) and `zig build
+  verify` (the agent binary links no SDL).
 - `zig build web`: the browser build, with the check of its module's imports. When a helper of
   the page changes, `zig build web-check` (it needs Node.js).
 - `zig fmt --check src build.zig`.
@@ -31,43 +32,32 @@ The steps are listed at the top of `build.zig`; agents build into a prefix and a
   original's own initial seed); a small seed such as 1 or 7 gives degenerate first draws in a
   multiplicative generator (`docs/lessons.md`).
 
-## The scenario runner and its suites
+## The harness a port builds
 
-`gameport-test run <suite>` runs each `*.case.json` of the suite in its own child process under the
-case's wall-clock bound. A driver that never returns is a `timeout` and a process that dies is a
-`crash`; the case's inputs are checked by digest before and after. The runner prints each case's
-verdict and a summary; `--report PATH` also writes one JSON line per case, with a command that
-replays it. The comparison is exact and ordered, and a failure names the **first difference**.
+What to compare depends on the game, so the skeleton has no test runner. Build one when the first
+reference data arrives, and keep what previous ports found necessary:
 
-- **`tests/public`**: synthetic and redistributable fixtures. It includes calibration cases,
-  negative controls that expect a wrong value, a missing observation, an extra one, a stall, a
-  crash and a bad digest: they prove the runner catches each.
-- **`tests/reference`**: cases whose expectations are recordings of the original's behaviour,
-  committed as observation files with their provenance.
-
-The drivers produce the actual observations:
-
-- `synthetic.*`: the calibration drivers.
-- `recorded`: another observation file (a second run, a candidate export).
-- `agent.scenario`: a script of agent-host commands and their responses, run in-process.
-- Drivers the port adds for its subsystems, such as the two of a previous port: **routine
-  vectors** (a function of the port against the recorded inputs and outputs of the original's
-  routine) and **trace replays** (the port's simulation stepped against a recorded trace of the
-  original, step by step, so the first difference names the step, the object and the field).
-
-A case has a status: `verified` blocks a change, `provisional` and `disputed` are reported as
-diagnostics and never fail a run.
+- **Two suites.** One of synthetic and redistributable fixtures, one whose expectations are
+  recordings of the original's behaviour, committed as observation files with their provenance.
+- **Exact, ordered comparison** that names the **first difference**: the step, the object, the
+  field.
+- **Bounded runs.** Each case runs under a wall-clock bound, in its own process when a driver can
+  hang or crash, so a stall is a `timeout` and a death a `crash`, not a hung suite.
+- **Inputs checked by digest** before and after, so a case cannot pass on edited data.
+- **Negative controls**: cases that expect a wrong value, a missing observation, an extra one, a
+  stall, a crash. They prove the harness catches each.
+- **A status per case**: `verified` blocks a change; `provisional` and `disputed` are reported
+  and never fail a run.
+- **Drivers per subsystem**, such as the two that carried a previous port: **routine vectors** (a
+  function of the port against the recorded inputs and outputs of the original's routine) and
+  **trace replays** (the port's simulation stepped against a recorded trace of the original).
 
 ## The agent host in tests
 
-The agent host runs the whole game without a window, with a virtual clock and injected input. It
-serves three kinds of checks:
-
-- `agent.scenario` cases: a fixed script and its expected responses (phases, state, frame digests,
-  audio counters).
-- The `smoke` step: a short synthetic script that must run clean.
-- Scripted end-to-end checks outside the suites: long games, save and load cycles, statistics
-  ("Comparing behaviours with statistics", below).
+The agent host runs the whole game without a window, with a virtual clock and injected input. The
+skeleton's `smoke` step runs it for a few frames; a port grows it into the driver of scripted
+end-to-end checks: a fixed script and its expected state and frame digests, long games, save and
+load cycles, statistics ("Comparing behaviours with statistics", below).
 
 It is not the game the user runs ("Gate the join", below).
 
@@ -95,7 +85,7 @@ The measurements come from oracles that live outside the repository
 - **Traces.** A whole flow recorded from the original: the state before, the events, the state
   after. The port replays the flow and compares each step.
 
-Only their outputs enter `tests/reference/data`.
+Only their outputs enter the repository, as reference data.
 
 ## Gate the join
 

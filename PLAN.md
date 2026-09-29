@@ -15,13 +15,13 @@
 ## P0 — Build and testing foundations
 
 - [ ] **01 — Build structure and toolchain** — Depends: none.
-  - Pin Zig and SDL; separate the shared module, the SDL host, the agent host and the test runner.
-    The template's skeleton is the start. Prefer static native linking where practical.
+  - Pin Zig and SDL; separate the shared module, the SDL host, the agent host and the browser
+    build. The template's skeleton is the start. Prefer static native linking where practical.
   - Gate: clean builds and a runnable synthetic test; the agent binary has no SDL dependency.
 
-- [ ] **02 — Test runner and fixture contract** — Depends: 01.
-  - Case IDs, provenance and trust status, exact comparisons, bounded execution, replay reports,
-    separate public and reference suites (`src/testkit`).
+- [ ] **02 — Test harness and fixture contract** — Depends: 01.
+  - TODO(the harness the game's checks need, `docs/testing.md`): at least provenance for committed
+    reference data, exact comparisons that name the first difference, and bounded runs.
   - Gate: deliberately wrong outputs, missing observations, crashes and timeouts give the expected
     verdicts; reference files stay unchanged.
 
@@ -38,8 +38,8 @@
     independently.
 
 - [ ] **05 — Minimal agent host and backend** — Depends: 01, 02.
-  - JSON commands and responses, controlled time, scripted events, reset, bounded stepping and
-    capture storage (`src/agent/host.zig`). Add state inspection as the game grows.
+  - Grow the skeleton's frame runner (`src/agent/main.zig`) into what the checks drive:
+    TODO(scripted events, reset, bounded stepping, state inspection, frame and PCM capture).
   - Gate: synthetic input and time scenarios replay identically; limits stop stalled runs; reset
     frees resources and isolates instances.
 
@@ -63,15 +63,16 @@
 ## P1 — Playable slice
 
 - [ ] **08 — Native I/O and storage** — Depends: 01, 02.
-  - Bound providers, the one-active-workflow executor, result ownership, cancellation, atomic named
-    storage, shared by the SDL and agent hosts.
-  - Gate: short reads, provider and allocation errors, queue limits, cancellation around a commit
-    and a required save at shutdown pass the contract tests.
+  - Bound providers, result ownership, atomic named storage, shared by the SDL and agent hosts;
+    TODO(I/O workflows if loads would stall the frame, DESIGN.md section 4).
+  - Gate: short reads, provider and allocation errors and a required save at shutdown pass the
+    contract tests (and queue limits and cancellation, with workflows).
 
-- [ ] **09 — Asset sources: CD image and directory** — Depends: 08.
-  - The shared ISO reader over a byte source, the directory source, logical names, listing and
-    `read_all`. TODO(the original's file layout, overlays such as a user configuration file).
-  - Gate: equivalent contents from both sources, bounded range reads, malformed input refused.
+- [ ] **09 — Asset sources** — Depends: 08.
+  - The directory source (in the skeleton), logical names, listing and `read_all`. TODO(the
+    original's file layout; an ISO 9660 reader if the port reads the CD image; overlays such as a
+    user configuration file or mod files).
+  - Gate: equivalent contents from every source, bounded range reads, malformed input refused.
 
 - [ ] **10 — SDL presentation and input** — Depends: 01, 02.
   - Lifecycle, resolution, borrowed RGBA8 presentation, monotonic time, keyboard, mouse,
@@ -96,8 +97,8 @@
   - Gate: the state survives save, load and restart; bad names, damaged data and an interrupted
     replacement keep a defined behaviour.
 
-- [ ] **Milestone M2:** a playable Linux game in one mode, launched from the CD image or a
-  directory, with working controls, persistence, and equivalent agent scenarios.
+- [ ] **Milestone M2:** a playable Linux game in one mode, launched from TODO(the game directory
+  or the CD image), with working controls, persistence, and equivalent agent scenarios.
 
 ## P1 — Complete local gameplay
 
@@ -192,10 +193,11 @@
 
 - [ ] **S1 — The repository stands alone** — Depends: none.
   - Building and testing use nothing outside the repository and no proprietary data of the game.
-    The CD image is read only by the standalone build, which embeds its assets.
+    Only a build that embeds the game's files (if the port has one) reads them, from the user's
+    copy.
   - Gate, checked at each milestone: in a fresh clone with an empty environment, `zig build`,
-    `zig build test` (no test skipped), `test-public`, `test-reference`, `smoke` and `verify`
-    pass, and `zig build standalone -Dembed-assets=<CD image>` builds.
+    `zig build test` (no test skipped), `smoke`, `verify`, `web` and TODO(the port's own suites)
+    pass.
 
 ## Additions to the original
 
