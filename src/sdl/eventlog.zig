@@ -1,9 +1,8 @@
 //! The event log of the SDL host: one JSON object on one line for each delivered platform event.
 //!
-//! The field names are the names that the `inject` command of the agent host parses (`parseEvent`
-//! in src/agent/host.zig). Thus a line from an interactive session replays unchanged in a
-//! headless run. An enum value that has no name is written as its number. The parser rejects
-//! such a line; it does not read the number as a different value.
+//! The field names are the names of the platform's types, so an agent host that parses the same
+//! lines replays an interactive session headlessly. An enum value that has no name is written as
+//! its number; a parser should reject such a line rather than read the number as another value.
 const std = @import("std");
 const gameport = @import("gameport");
 const platform = gameport.platform;
@@ -78,16 +77,6 @@ pub fn writeEvent(ev: platform.Event, w: *std.Io.Writer) std.Io.Writer.Error!voi
             try js.write(size.width);
             try js.objectField("height");
             try js.write(size.height);
-        },
-        .connected, .disconnected => |id| {
-            try js.objectField("connection");
-            try js.write(@backingInt(id));
-        },
-        .received => |r| {
-            try js.objectField("connection");
-            try js.write(@backingInt(r.connection));
-            try js.objectField("bytes");
-            try js.write(r.message.len);
         },
         .focus_gained, .focus_lost, .quit => {},
     }

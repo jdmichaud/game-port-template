@@ -1,24 +1,17 @@
 //! The browser backend: the platform contract (`platform.Platform`) over the functions of the
 //! page (`host.zig`). The page reports each device event through the exports of the module;
-//! `poll_events` gives these events to the game in order, followed by the events of the
-//! network transport. The rules follow the native host where a browser permits it: the game
-//! reads the mouse as relative counts, so the pointer is locked while the game has it, and a
-//! capture change is an event.
+//! `poll_events` gives these events to the game in order. The rules follow the native host where
+//! a browser permits it: the game reads the mouse as relative counts, so the pointer is locked
+//! while the game has it, and a capture change is an event.
 const std = @import("std");
 const gameport = @import("gameport");
 const platform = gameport.platform;
-const workflow = gameport.workflow;
 const host_mod = @import("host.zig");
 const Host = host_mod.Host;
 
 pub const WebBackend = struct {
     allocator: std.mem.Allocator,
     host: *const Host,
-    /// The runner of the game's I/O workflows. Without one, a submission is refused.
-    jobs: ?workflow.Jobs = null,
-    /// The network calls go to this transport: the WebSocket of the page.
-    net: platform.NetForward = .{},
-
     started: bool = false,
     capabilities: platform.Capabilities = .{},
     resolution: ?platform.Size = null,
@@ -76,15 +69,6 @@ pub const WebBackend = struct {
         .audio_clear = audioClear,
         .audio_close = audioClose,
         .set_relative_mouse = setRelativeMouse,
-        .net_connect = netConnect,
-        .net_listen = netListen,
-        .net_stop_listening = netStopListening,
-        .net_listen_status = netListenStatus,
-        .net_send = netSend,
-        .net_close = netClose,
-        .io_submit = ioSubmit,
-        .io_take = ioTake,
-        .io_cancel = ioCancel,
     };
 
     fn cast(ctx: *anyopaque) *WebBackend {
@@ -95,7 +79,7 @@ pub const WebBackend = struct {
         const self = cast(ctx);
         if (!self.started) {
             self.started = true;
-            self.capabilities = .{ .video = true, .audio = true, .controllers = false, .network = true };
+            self.capabilities = .{ .video = true, .audio = true, .controllers = false };
         }
         return self.capabilities;
     }
@@ -158,7 +142,7 @@ pub const WebBackend = struct {
             self.events.clearRetainingCapacity();
             self.next_event = 0;
         }
-        return self.net.poll(dst, n);
+        return n;
     }
 
     fn push(self: *WebBackend, payload: platform.Event.Payload) void {
@@ -280,7 +264,7 @@ pub const WebBackend = struct {
         self.audio = .{};
     }
 
-    // --- capture, network and workflows ------------------------------------------------------
+    // --- capture -----------------------------------------------------------------------------
 
     /// Requests the pointer lock. A `capture_changed` event reports the state that the page
     /// really has. A browser locks the pointer only after a click, so the lock often comes later,
@@ -291,38 +275,6 @@ pub const WebBackend = struct {
         self.relative_wanted = enabled;
         self.captured = self.host.set_relative_mouse(@intFromBool(enabled)) != 0;
         self.push(.{ .capture_changed = self.captured });
-    }
-
-    fn netConnect(ctx: *anyopaque, endpoint: platform.Endpoint) platform.PlatformError!platform.ConnectionId {
-        return cast(ctx).net.connect(endpoint);
-    }
-    fn netListen(ctx: *anyopaque, endpoint: platform.Endpoint) platform.PlatformError!void {
-        return cast(ctx).net.listen(endpoint);
-    }
-    fn netStopListening(ctx: *anyopaque) void {
-        cast(ctx).net.stopListening();
-    }
-    fn netListenStatus(ctx: *anyopaque) platform.ListenStatus {
-        return cast(ctx).net.listenStatus();
-    }
-    fn netSend(ctx: *anyopaque, connection: platform.ConnectionId, message: []const u8) platform.PlatformError!void {
-        return cast(ctx).net.send(connection, message);
-    }
-    fn netClose(ctx: *anyopaque, connection: platform.ConnectionId) void {
-        cast(ctx).net.close(connection);
-    }
-
-    fn ioSubmit(ctx: *anyopaque, request: workflow.Request) workflow.SubmitError!workflow.JobId {
-        const jobs = cast(ctx).jobs orelse return error.Closed;
-        return jobs.submit(request);
-    }
-    fn ioTake(ctx: *anyopaque) ?workflow.Completion {
-        const jobs = cast(ctx).jobs orelse return null;
-        return jobs.take();
-    }
-    fn ioCancel(ctx: *anyopaque, id: workflow.JobId) bool {
-        const jobs = cast(ctx).jobs orelse return false;
-        return jobs.cancel(id);
     }
 };
 
@@ -384,13 +336,6 @@ const FakePage = struct {
     fn relative(enabled: u32) u32 {
         return @intFromBool(enabled != 0 and lock_granted);
     }
-    fn netConnect(_: [*]const u8, _: u32, _: u32) i32 {
-        return 1;
-    }
-    fn netSend(_: u32, _: [*]const u8, _: u32) i32 {
-        return host_mod.send_ok;
-    }
-    fn netClose(_: u32) void {}
     fn log(_: u32, _: [*]const u8, _: u32) void {}
 
     const host = Host{
@@ -404,9 +349,6 @@ const FakePage = struct {
         .audio_clear = audioClear,
         .audio_close = noop,
         .set_relative_mouse = relative,
-        .net_connect = netConnect,
-        .net_send = netSend,
-        .net_close = netClose,
         .log = log,
         .storage_save = storageSave,
         .storage_delete = storageDelete,

@@ -4,14 +4,8 @@
 const std = @import("std");
 const gameport = @import("gameport");
 const platform = gameport.platform;
-const workflow = gameport.workflow;
 
 pub const AgentBackend = struct {
-    /// The runner of the game's I/O workflows, which the host sets. Without one, a submission
-    /// is refused.
-    jobs: ?workflow.Jobs = null,
-    /// The network calls go to this transport, when a host gives one (a simulated link in tests).
-    net: platform.NetForward = .{},
     allocator: std.mem.Allocator,
     options: platform.HostOptions,
     started: bool = false,
@@ -124,15 +118,6 @@ pub const AgentBackend = struct {
         .audio_clear = audioClear,
         .audio_close = audioClose,
         .set_relative_mouse = setRelativeMouse,
-        .net_connect = netConnect,
-        .net_listen = netListen,
-        .net_stop_listening = netStopListening,
-        .net_listen_status = netListenStatus,
-        .net_send = netSend,
-        .net_close = netClose,
-        .io_submit = ioSubmit,
-        .io_take = ioTake,
-        .io_cancel = ioCancel,
     };
 
     fn cast(ctx: *anyopaque) *AgentBackend {
@@ -143,7 +128,7 @@ pub const AgentBackend = struct {
         const self = cast(ctx);
         self.calls.start += 1;
         self.started = true;
-        return .{ .video = true, .audio = true, .controllers = true, .network = false };
+        return .{ .video = true, .audio = true, .controllers = true };
     }
 
     fn setResolution(ctx: *anyopaque, width: u32, height: u32) platform.PlatformError!void {
@@ -190,7 +175,7 @@ pub const AgentBackend = struct {
             self.pending.clearRetainingCapacity();
             self.next_pending = 0;
         }
-        return self.net.poll(dst, n);
+        return n;
     }
 
     fn nowNs(ctx: *anyopaque) u64 {
@@ -254,45 +239,6 @@ pub const AgentBackend = struct {
         self.relative_mouse = enabled;
         // The simulated host grants the request and reports it, as a real host does.
         self.pending.append(self.allocator, .{ .time_ns = self.clock_ns, .payload = .{ .capture_changed = enabled } }) catch return error.OutOfMemory;
-    }
-
-    fn netConnect(ctx: *anyopaque, endpoint: platform.Endpoint) platform.PlatformError!platform.ConnectionId {
-        return cast(ctx).net.connect(endpoint);
-    }
-
-    fn netListen(ctx: *anyopaque, endpoint: platform.Endpoint) platform.PlatformError!void {
-        return cast(ctx).net.listen(endpoint);
-    }
-
-    fn netStopListening(ctx: *anyopaque) void {
-        cast(ctx).net.stopListening();
-    }
-
-    fn netListenStatus(ctx: *anyopaque) platform.ListenStatus {
-        return cast(ctx).net.listenStatus();
-    }
-
-    fn netSend(ctx: *anyopaque, connection: platform.ConnectionId, message: []const u8) platform.PlatformError!void {
-        return cast(ctx).net.send(connection, message);
-    }
-
-    fn netClose(ctx: *anyopaque, connection: platform.ConnectionId) void {
-        cast(ctx).net.close(connection);
-    }
-
-    // --- I/O workflows -------------------------------------------------------------------------
-
-    fn ioSubmit(ctx: *anyopaque, request: workflow.Request) workflow.SubmitError!workflow.JobId {
-        const jobs = cast(ctx).jobs orelse return error.Closed;
-        return jobs.submit(request);
-    }
-    fn ioTake(ctx: *anyopaque) ?workflow.Completion {
-        const jobs = cast(ctx).jobs orelse return null;
-        return jobs.take();
-    }
-    fn ioCancel(ctx: *anyopaque, id: workflow.JobId) bool {
-        const jobs = cast(ctx).jobs orelse return false;
-        return jobs.cancel(id);
     }
 };
 

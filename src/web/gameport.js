@@ -288,14 +288,6 @@ function gameportHelpers(memory) {
     return [Math.min(Math.max(x, 0), canvas.width - 1), Math.min(Math.max(y, 0), canvas.height - 1)];
   }
 
-  // --- the network --------------------------------------------------------------------------
-
-  // The skeleton has no network game. A port that adds one opens WebSockets here and reports
-  // their events to the module (see the platform's Transport).
-  const netConnect = () => -1;
-  const netSend = () => -1;
-  const netClose = () => {};
-
   // --- the game's records, kept in the browser ----------------------------------------------
 
   // Each record that the game saves is kept in the browser's storage for this page's address, as
@@ -368,9 +360,6 @@ function gameportHelpers(memory) {
     js_audio_clear: audioClear,
     js_audio_close: audioClose,
     js_set_relative_mouse: setRelativeMouse,
-    js_net_connect: netConnect,
-    js_net_send: netSend,
-    js_net_close: netClose,
     js_log: log,
     js_storage_save: storageSave,
     js_storage_delete: storageDelete,

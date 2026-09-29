@@ -9,17 +9,17 @@
 //!   input gives the same state on every platform. `State.hash` names it.
 //! - The picture is drawn as palette indices into a page of the original's size, and one
 //!   conversion makes the RGBA frame that the platform presents.
-//! - Files go through workflows (`workflow.zig`): an update submits a request, a later update takes
-//!   the completion, and no update waits for a file.
+//! - Files come through the two interfaces that the host binds: `AssetSource` for the original's
+//!   files, read-only, and `Storage` for the saves. A missing file is not an error. A game whose
+//!   files must stream while it plays (a film, a CD track) adds I/O jobs to the platform for that.
 //! - A save has one versioned format, and a record of another version is refused.
 const std = @import("std");
 const platform = @import("platform.zig");
-const workflow = @import("workflow.zig");
 
 pub const page_width: u32 = 320;
 pub const page_height: u32 = 200;
 
-pub const Phase = enum { startup, loading, playing, finished };
+pub const Phase = enum { startup, playing, finished };
 pub const UpdateResult = enum { running, finished };
 
 /// The asset that the game reads at startup. Its first line is the title. A missing asset is not an
@@ -146,6 +146,9 @@ pub const State = struct {
 
 pub const Game = struct {
     allocator: std.mem.Allocator,
+    /// The original's files and the saves, bound by the host. Null when the host has none.
+    assets: ?platform.AssetSource,
+    storage: ?platform.Storage,
     phase: Phase = .startup,
     state: State = .{},
     update_count: u64 = 0,
@@ -156,9 +159,6 @@ pub const Game = struct {
     /// The first line of `title_asset`, when the asset exists.
     title_buf: [40]u8 = @splat(0),
     title_len: usize = 0,
-    title_job: workflow.JobId = .none,
-    /// A save or a load in flight. F2 and F3 do nothing until it completes.
-    file_job: workflow.JobId = .none,
     saves_written: u32 = 0,
     loads_done: u32 = 0,
     audio: ?platform.AudioFormat = null,
@@ -168,11 +168,11 @@ pub const Game = struct {
     page: []u8,
     rgba: []u8,
 
-    pub fn init(allocator: std.mem.Allocator) error{OutOfMemory}!Game {
+    pub fn init(allocator: std.mem.Allocator, assets: ?platform.AssetSource, storage: ?platform.Storage) error{OutOfMemory}!Game {
         const page = try allocator.alloc(u8, page_width * page_height);
         errdefer allocator.free(page);
         const rgba = try allocator.alloc(u8, page_width * page_height * platform.RgbaFrame.bytes_per_pixel);
-        return .{ .allocator = allocator, .page = page, .rgba = rgba };
+        return .{ .allocator = allocator, .assets = assets, .storage = storage, .page = page, .rgba = rgba };
     }
 
     pub fn deinit(self: *Game) void {
@@ -185,23 +185,17 @@ pub const Game = struct {
         return self.title_buf[0..self.title_len];
     }
 
-    /// One frame: the completions of earlier workflows, the input, one step of the state, the
-    /// sound and the picture.
+    /// One frame: the input, one step of the state, the sound and the picture.
     pub fn update(self: *Game, p: *platform.Platform) !UpdateResult {
         if (self.phase == .finished) return .finished;
         self.update_count += 1;
-        self.takeCompletions(p);
         switch (self.phase) {
             .startup => {
                 _ = try p.start();
                 try p.setResolution(page_width, page_height);
                 self.audio = p.audioOpen(audio_format) catch null;
-                self.title_job = p.ioSubmit(.{ .read_asset = .{ .path = title_asset, .max_bytes = 4096 } }) catch .none;
-                self.phase = if (self.title_job == .none) .playing else .loading;
-            },
-            .loading => {
-                self.consumeEvents(p);
-                if (self.title_job == .none and self.phase == .loading) self.phase = .playing;
+                self.readTitle();
+                self.phase = .playing;
             },
             .playing => {
                 self.consumeEvents(p);
@@ -218,33 +212,14 @@ pub const Game = struct {
         return .running;
     }
 
-    fn takeCompletions(self: *Game, p: *platform.Platform) void {
-        while (p.ioTake()) |taken| {
-            var c = taken;
-            defer c.deinit();
-            if (c.id == self.title_job) {
-                self.title_job = .none;
-                const text = c.bytes() orelse continue;
-                const line = std.mem.sliceTo(text, '\n');
-                const trimmed = std.mem.trimEnd(u8, line, "\r");
-                self.title_len = @min(trimmed.len, self.title_buf.len);
-                @memcpy(self.title_buf[0..self.title_len], trimmed[0..self.title_len]);
-            } else if (c.id == self.file_job) {
-                self.file_job = .none;
-                switch (c.kind) {
-                    .save_record => if (c.result == .done) {
-                        self.saves_written += 1;
-                    },
-                    .load_save => if (c.bytes()) |bytes| {
-                        if (State.decode(bytes)) |loaded| {
-                            self.state = loaded;
-                            self.loads_done += 1;
-                        } else |_| {}
-                    },
-                    else => {},
-                }
-            }
-        }
+    /// The first line of `title_asset`, when the host has the asset.
+    fn readTitle(self: *Game) void {
+        const assets = self.assets orelse return;
+        var owned = assets.readAll(title_asset, 4096) catch return;
+        defer owned.deinit();
+        const line = std.mem.trimEnd(u8, std.mem.sliceTo(owned.bytes, '\n'), "\r");
+        self.title_len = @min(line.len, self.title_buf.len);
+        @memcpy(self.title_buf[0..self.title_len], line[0..self.title_len]);
     }
 
     fn consumeEvents(self: *Game, p: *platform.Platform) void {
@@ -258,8 +233,8 @@ pub const Game = struct {
                     .quit => self.phase = .finished,
                     .key_down => |k| switch (k.key) {
                         .escape => self.phase = .finished,
-                        .f2 => self.saveState(p),
-                        .f3 => self.loadState(p),
+                        .f2 => self.saveState(),
+                        .f3 => self.loadState(),
                         else => self.state.push(k.key),
                     },
                     else => {},
@@ -268,16 +243,20 @@ pub const Game = struct {
         }
     }
 
-    fn saveState(self: *Game, p: *platform.Platform) void {
-        if (self.file_job != .none) return;
-        // The workflow copies the bytes at submission, so a buffer on the stack is enough.
+    fn saveState(self: *Game) void {
+        const storage = self.storage orelse return;
         const record = self.state.encode();
-        self.file_job = p.ioSubmit(.{ .save_record = .{ .name = save_name, .bytes = &record } }) catch .none;
+        storage.save(save_name, &record) catch return;
+        self.saves_written += 1;
     }
 
-    fn loadState(self: *Game, p: *platform.Platform) void {
-        if (self.file_job != .none) return;
-        self.file_job = p.ioSubmit(.{ .load_save = .{ .name = save_name } }) catch .none;
+    /// A record that is missing, damaged or of another version leaves the state as it is.
+    fn loadState(self: *Game) void {
+        const storage = self.storage orelse return;
+        var owned = storage.load(save_name) catch return;
+        defer owned.deinit();
+        self.state = State.decode(owned.bytes) catch return;
+        self.loads_done += 1;
     }
 
     /// Keeps the device queue `audio_ahead` frames ahead: the click while it lasts, then silence.
@@ -376,4 +355,34 @@ test "a save record comes back as the same state, and another version is refused
     std.mem.writeInt(u16, other[State.magic.len..][0..2], State.version + 1, .little);
     try testing.expectError(error.WrongVersion, State.decode(&other));
     try testing.expectError(error.NotAState, State.decode(record[0..10]));
+}
+
+test "F2 saves through the bound storage, F3 loads it back, and the title comes from the assets" {
+    const memory = @import("memory.zig");
+    var assets = memory.MemoryAssetSource.init(testing.allocator);
+    defer assets.deinit();
+    try assets.add(title_asset, "A ball in a box\r\nsecond line");
+    var storage = memory.MemoryStorage.init(testing.allocator);
+    defer storage.deinit();
+    var game = try Game.init(testing.allocator, assets.assetSource(), storage.storage());
+    defer game.deinit();
+
+    game.readTitle();
+    try testing.expectEqualStrings("A ball in a box", game.title());
+    for (0..40) |_| _ = game.state.step();
+    const saved = game.state.hash();
+    game.saveState();
+    for (0..40) |_| _ = game.state.step();
+    game.loadState();
+    try testing.expectEqual(saved, game.state.hash());
+    try testing.expectEqual(@as(u32, 1), game.saves_written);
+    try testing.expectEqual(@as(u32, 1), game.loads_done);
+
+    // Without providers, nothing is read or written, and nothing fails.
+    var bare = try Game.init(testing.allocator, null, null);
+    defer bare.deinit();
+    bare.readTitle();
+    bare.saveState();
+    bare.loadState();
+    try testing.expectEqual(@as(u32, 0), bare.saves_written);
 }

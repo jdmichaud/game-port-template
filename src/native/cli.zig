@@ -1,21 +1,19 @@
 //! The command-line options that both native hosts take and open for the game: a positional
 //! asset path and `--saves <dir>`.
 //!
-//! The asset path is an installed game directory or a CD image. The ISO signature, not the file
-//! name, tells them apart. `--saves` defaults to the per-user application data directory, which
+//! The asset path is the directory of the original's files. A port whose original ships on a CD
+//! adds an image reader beside `DirectoryAssetSource` (DESIGN.md). `--saves` defaults to the per-user application data directory, which
 //! is created on first use. The result is a bound `AssetSource` and `Storage`. The game uses
 //! them and does not know which kind of source it has.
 const std = @import("std");
 const builtin = @import("builtin");
 const gameport = @import("gameport");
 const platform = gameport.platform;
-const iso = gameport.iso;
 const DirectoryAssetSource = @import("directory.zig").DirectoryAssetSource;
 const DirectoryStorage = @import("storage.zig").DirectoryStorage;
-const iso_source = @import("iso_source.zig");
 
 pub const usage =
-    \\  ASSET_PATH    a game directory or a CD image (an ISO is recognised by its signature)
+    \\  ASSET_PATH    the directory of the original's files
     \\  --saves DIR    where saves are kept (default: the per-user application data directory)
     \\
 ;
@@ -54,12 +52,11 @@ pub const Options = struct {
 };
 
 /// The kind of asset source, for the host's start-up line and the agent's diagnostics.
-pub const AssetKind = enum { none, directory, iso };
+pub const AssetKind = enum { none, directory };
 
 pub const OpenError = error{
     NotFound,
     NotADirectory,
-    NotAnImage,
     AccessDenied,
     NoApplicationDirectory,
     Io,
@@ -67,16 +64,13 @@ pub const OpenError = error{
     OutOfMemory,
 };
 
-/// The providers that a host owns while the game runs. `open` works in place: the ISO reader
-/// keeps the address of the byte source next to it, so the value must not move after `open`.
+/// The providers that a host owns while the game runs.
 pub const Providers = struct {
     allocator: std.mem.Allocator = undefined,
     kind: AssetKind = .none,
     /// The save directory in use (owned).
     saves_path: []u8 = &.{},
     assets_directory: ?DirectoryAssetSource = null,
-    image_bytes: ?iso_source.NativeByteSource = null,
-    image: ?iso.IsoAssetSource = null,
     saves: ?DirectoryStorage = null,
 
     pub const empty: Providers = .{};
@@ -98,23 +92,6 @@ pub const Providers = struct {
             try defaultSaveDirectory(allocator, environ);
         self.saves = try mapOpen(DirectoryStorage.open(allocator, io, self.saves_path, true));
         const path = options.assets orelse return;
-        if (iso_source.looksLikeIsoImage(io, path)) {
-            self.image_bytes = iso_source.NativeByteSource.open(io, path) catch |err| return switch (err) {
-                error.NotFound => error.NotFound,
-                error.NotAFile => error.NotAnImage,
-                error.AccessDenied => error.AccessDenied,
-                error.Canceled => error.Canceled,
-                error.Io => error.Io,
-            };
-            self.image = iso.IsoAssetSource.init(allocator, self.image_bytes.?.byteSource()) catch |err| return switch (err) {
-                error.OutOfMemory => error.OutOfMemory,
-                error.Canceled => error.Canceled,
-                // The signature identifies an image, but the volume descriptor is not valid.
-                else => error.NotAnImage,
-            };
-            self.kind = .iso;
-            return;
-        }
         self.assets_directory = try mapOpen(DirectoryAssetSource.open(allocator, io, path));
         self.kind = .directory;
     }
@@ -130,8 +107,6 @@ pub const Providers = struct {
     }
 
     pub fn deinit(self: *Providers) void {
-        if (self.image) |*i| i.deinit();
-        if (self.image_bytes) |*b| b.deinit();
         if (self.assets_directory) |*d| d.deinit();
         if (self.saves) |*s| s.deinit();
         self.allocator.free(self.saves_path);
@@ -143,7 +118,6 @@ pub const Providers = struct {
         return switch (self.kind) {
             .none => null,
             .directory => self.assets_directory.?.assetSource(),
-            .iso => self.image.?.assetSource(),
         };
     }
 
@@ -211,7 +185,7 @@ test "the save directory follows the platform's application data convention" {
     }
 }
 
-test "the options open a game directory, a CD image, or neither" {
+test "the options open a game directory, or none" {
     const allocator = std.testing.allocator;
     const io = std.testing.io;
     var tmp = std.testing.tmpDir(.{ .iterate = true });
@@ -223,28 +197,19 @@ test "the options open a game directory, a CD image, or neither" {
     var game_dir = try tmp.dir.openDir(io, "game", .{ .iterate = true });
     defer game_dir.close(io);
     try @import("directory.zig").writeFixture(io, game_dir);
-    var pattern: [contract.fixture.nested_len]u8 = undefined;
-    const image = try iso.buildTestImage(allocator, &.{
-        .{ .path = contract.fixture.blob_name, .bytes = contract.fixture.blob },
-        .{ .path = contract.fixture.empty_name, .bytes = "" },
-        .{ .path = contract.fixture.config_name, .bytes = contract.fixture.config },
-        .{ .path = contract.fixture.nested_name, .bytes = contract.fixture.nested(&pattern) },
-    });
-    defer allocator.free(image);
-    try tmp.dir.writeFile(io, .{ .sub_path = "game.iso", .data = image });
 
     var env = try testEnviron(allocator, &.{.{ "XDG_DATA_HOME", "/unused" }});
     defer env.deinit();
-    var paths: [3][]u8 = undefined;
-    inline for (.{ "game", "game.iso", "saves" }, 0..) |sub, i| {
+    var paths: [2][]u8 = undefined;
+    inline for (.{ "game", "saves" }, 0..) |sub, i| {
         paths[i] = try std.fmt.allocPrint(allocator, "{s}/{s}", .{ base, sub });
     }
     defer for (paths) |p| allocator.free(p);
 
-    // A directory and an image, and the same contract for both.
-    for ([_][]const u8{ paths[0], paths[1] }) |assets| {
+    // A game directory: the asset source passes the contract, and the storage keeps a record.
+    {
         var providers: Providers = .empty;
-        try providers.open(allocator, io, &env, .{ .assets = assets, .saves = paths[2] });
+        try providers.open(allocator, io, &env, .{ .assets = paths[0], .saves = paths[1] });
         defer providers.deinit();
         try std.testing.expect(providers.kind != .none);
         try contract.assetContract(providers.assetSource().?);
@@ -259,23 +224,23 @@ test "the options open a game directory, a CD image, or neither" {
     // Without an asset path, only the save directory opens, and `open` creates it.
     {
         var providers: Providers = .empty;
-        try providers.open(allocator, io, &env, .{ .saves = paths[2] });
+        try providers.open(allocator, io, &env, .{ .saves = paths[1] });
         defer providers.deinit();
         try std.testing.expectEqual(AssetKind.none, providers.kind);
         try std.testing.expect(providers.assetSource() == null);
         var names = try providers.storage().listSaves();
         names.deinit();
-        try std.testing.expectEqualStrings(paths[2], providers.saves_path);
+        try std.testing.expectEqualStrings(paths[1], providers.saves_path);
     }
 
-    // A path that is neither a directory nor an image.
+    // A path that is missing, or not a directory.
     {
         var providers: Providers = .empty;
         const missing = try std.fmt.allocPrint(allocator, "{s}/absent", .{base});
         defer allocator.free(missing);
-        try std.testing.expectError(error.NotFound, providers.open(allocator, io, &env, .{ .assets = missing, .saves = paths[2] }));
+        try std.testing.expectError(error.NotFound, providers.open(allocator, io, &env, .{ .assets = missing, .saves = paths[1] }));
         const not_a_directory = try std.fmt.allocPrint(allocator, "{s}/game/game.cfg", .{base});
         defer allocator.free(not_a_directory);
-        try std.testing.expectError(error.NotADirectory, providers.open(allocator, io, &env, .{ .assets = not_a_directory, .saves = paths[2] }));
+        try std.testing.expectError(error.NotADirectory, providers.open(allocator, io, &env, .{ .assets = not_a_directory, .saves = paths[1] }));
     }
 }

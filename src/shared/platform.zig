@@ -3,16 +3,17 @@
 //!
 //! Each interface is a context pointer plus a vtable, so several backends and several games can
 //! exist in one process. Memory ownership follows the design. `present` borrows its frame only
-//! during the call. Received network bytes stay valid until the next poll. Each returned buffer
-//! is released through its own `deinit`.
+//! during the call. Each returned buffer is released through its own `deinit`.
+//!
+//! This is the core that every port needs. A port adds what its game asks for, as calls of the
+//! same shape: a network transport when the original plays over a link, I/O jobs that run beside
+//! the updates when a file must stream while the game plays (DESIGN.md).
 const std = @import("std");
-const workflow = @import("workflow.zig");
 
 pub const Capabilities = struct {
     video: bool = false,
     audio: bool = false,
     controllers: bool = false,
-    network: bool = false,
 };
 
 pub const HostOptions = struct {
@@ -61,60 +62,6 @@ pub const AudioStatus = struct {
     played_frames: u64 = 0,
     running: bool = false,
     suspended: bool = false,
-};
-
-pub const ConnectionId = enum(u32) { _ };
-
-pub const Endpoint = struct {
-    host: []const u8,
-    port: u16,
-};
-
-/// The largest message that a transport carries (DESIGN.md). A larger message
-/// is refused with `error.MessageTooLarge`, so a peer cannot make the other side hold an
-/// unbounded buffer.
-pub const max_message_len: usize = 64 * 1024;
-
-/// What a listening transport reports: whether it accepts guests, on which port, and the
-/// addresses of this machine that a guest can open, most useful first.
-pub const ListenStatus = struct {
-    listening: bool = false,
-    port: u16 = 0,
-    addresses: [max_addresses]Address = @splat(.{}),
-    address_count: u8 = 0,
-
-    pub const max_addresses = 4;
-
-    /// One address as text: an IPv4 dotted quad or an IPv6 address, at most 45 characters.
-    pub const Address = struct {
-        bytes: [46]u8 = @splat(0),
-        len: u8 = 0,
-
-        pub fn init(text_in: []const u8) Address {
-            var a: Address = .{};
-            const n = @min(text_in.len, a.bytes.len);
-            @memcpy(a.bytes[0..n], text_in[0..n]);
-            a.len = @intCast(n);
-            return a;
-        }
-
-        pub fn text(a: *const Address) []const u8 {
-            return a.bytes[0..a.len];
-        }
-    };
-
-    /// The addresses that the transport reported.
-    pub fn list(s: *const ListenStatus) []const Address {
-        return s.addresses[0..s.address_count];
-    }
-
-    /// Adds an address if there is room. Returns false when the list is full.
-    pub fn add(s: *ListenStatus, text_in: []const u8) bool {
-        if (s.address_count == max_addresses) return false;
-        s.addresses[s.address_count] = Address.init(text_in);
-        s.address_count += 1;
-        return true;
-    }
 };
 
 /// The key identities of the project. The values are stable; hosts map their scan codes to them.
@@ -229,7 +176,7 @@ pub const ControllerAxis = enum(u8) { left_x, left_y, right_x, right_y, trigger_
 
 pub const Size = struct { width: u32, height: u32 };
 
-/// One device or transport event, in order, with a time stamp from the host's monotonic clock.
+/// One device event, in order, with a time stamp from the host's monotonic clock.
 pub const Event = struct {
     time_ns: u64,
     payload: Payload,
@@ -248,7 +195,6 @@ pub const Event = struct {
     pub const MouseWheel = struct { dx: i32, dy: i32 };
     pub const ControllerButtonEvent = struct { controller: ControllerId, button: ControllerButton };
     pub const ControllerAxisEvent = struct { controller: ControllerId, axis: ControllerAxis, value: i16 };
-    pub const Received = struct { connection: ConnectionId, message: []const u8 };
 
     pub const Payload = union(enum) {
         key_down: KeyEvent,
@@ -269,9 +215,6 @@ pub const Event = struct {
         capture_changed: bool,
         drawable_resized: Size,
         quit,
-        connected: ConnectionId,
-        disconnected: ConnectionId,
-        received: Received,
     };
 
     pub const Kind = std.meta.Tag(Payload);
@@ -285,95 +228,9 @@ pub const PlatformError = error{
     InvalidResolution,
     NotStarted,
     QueueFull,
-    /// The transport cannot listen on the endpoint: the port is in use, or the address is not
-    /// one of this machine.
-    AddressUnavailable,
-    /// The connection is not open: it closed, or the id was never given.
-    NotConnected,
-    /// A message larger than `max_message_len`.
-    MessageTooLarge,
 };
 
-/// The network half of a backend (DESIGN.md). A backend forwards its `net_*`
-/// calls to it and appends its events to the device events of `poll_events`. The transport
-/// delivers whole messages, reliably and in order, while a connection lives. `send` copies the
-/// message into a bounded queue: success means accepted for sending, not received. A host that
-/// serves guests listens on an endpoint; each guest that comes is a `connected` event with its
-/// own connection id. Bytes of a `received` event stay valid until the next `poll`.
-pub const Transport = struct {
-    context: *anyopaque,
-    vtable: *const VTable,
-
-    pub const VTable = struct {
-        connect: *const fn (*anyopaque, Endpoint) PlatformError!ConnectionId,
-        listen: *const fn (*anyopaque, Endpoint) PlatformError!void,
-        stop_listening: *const fn (*anyopaque) void,
-        listen_status: *const fn (*anyopaque) ListenStatus,
-        send: *const fn (*anyopaque, ConnectionId, []const u8) PlatformError!void,
-        close: *const fn (*anyopaque, ConnectionId) void,
-        poll: *const fn (*anyopaque, []Event) usize,
-    };
-
-    pub fn connect(t: Transport, endpoint: Endpoint) PlatformError!ConnectionId {
-        return t.vtable.connect(t.context, endpoint);
-    }
-    pub fn listen(t: Transport, endpoint: Endpoint) PlatformError!void {
-        return t.vtable.listen(t.context, endpoint);
-    }
-    pub fn stopListening(t: Transport) void {
-        t.vtable.stop_listening(t.context);
-    }
-    pub fn listenStatus(t: Transport) ListenStatus {
-        return t.vtable.listen_status(t.context);
-    }
-    pub fn send(t: Transport, connection: ConnectionId, message: []const u8) PlatformError!void {
-        return t.vtable.send(t.context, connection, message);
-    }
-    pub fn close(t: Transport, connection: ConnectionId) void {
-        t.vtable.close(t.context, connection);
-    }
-    /// Appends the pending network events to `dst`, in order. Returns the number written.
-    pub fn poll(t: Transport, dst: []Event) usize {
-        return t.vtable.poll(t.context, dst);
-    }
-};
-
-/// The network calls of a backend that forwards them to an optional transport. Each backend
-/// keeps one of these, so the forwarding is written once.
-pub const NetForward = struct {
-    transport: ?Transport = null,
-
-    pub fn connect(f: *const NetForward, endpoint: Endpoint) PlatformError!ConnectionId {
-        const t = f.transport orelse return error.Unsupported;
-        return t.connect(endpoint);
-    }
-    pub fn listen(f: *const NetForward, endpoint: Endpoint) PlatformError!void {
-        const t = f.transport orelse return error.Unsupported;
-        return t.listen(endpoint);
-    }
-    pub fn stopListening(f: *const NetForward) void {
-        if (f.transport) |t| t.stopListening();
-    }
-    pub fn listenStatus(f: *const NetForward) ListenStatus {
-        const t = f.transport orelse return .{};
-        return t.listenStatus();
-    }
-    pub fn send(f: *const NetForward, connection: ConnectionId, message: []const u8) PlatformError!void {
-        const t = f.transport orelse return error.Unsupported;
-        return t.send(connection, message);
-    }
-    pub fn close(f: *const NetForward, connection: ConnectionId) void {
-        if (f.transport) |t| t.close(connection);
-    }
-    /// Appends the transport's events after the `used` device events already in `dst`.
-    pub fn poll(f: *const NetForward, dst: []Event, used: usize) usize {
-        const t = f.transport orelse return used;
-        if (used >= dst.len) return used;
-        return used + t.poll(dst[used..]);
-    }
-};
-
-/// Lifecycle, device events, time, presentation, PCM output, transport and I/O workflows.
+/// Lifecycle, device events, time, presentation and PCM output.
 pub const Platform = struct {
     context: *anyopaque,
     vtable: *const VTable,
@@ -390,15 +247,6 @@ pub const Platform = struct {
         audio_clear: *const fn (*anyopaque) void,
         audio_close: *const fn (*anyopaque) void,
         set_relative_mouse: *const fn (*anyopaque, bool) PlatformError!void,
-        net_connect: *const fn (*anyopaque, Endpoint) PlatformError!ConnectionId,
-        net_listen: *const fn (*anyopaque, Endpoint) PlatformError!void,
-        net_stop_listening: *const fn (*anyopaque) void,
-        net_listen_status: *const fn (*anyopaque) ListenStatus,
-        net_send: *const fn (*anyopaque, ConnectionId, []const u8) PlatformError!void,
-        net_close: *const fn (*anyopaque, ConnectionId) void,
-        io_submit: *const fn (*anyopaque, workflow.Request) workflow.SubmitError!workflow.JobId,
-        io_take: *const fn (*anyopaque) ?workflow.Completion,
-        io_cancel: *const fn (*anyopaque, workflow.JobId) bool,
     };
 
     pub fn start(p: *Platform) PlatformError!Capabilities {
@@ -437,40 +285,6 @@ pub const Platform = struct {
     /// Requests relative mouse mode. The actual state arrives as a `capture_changed` event.
     pub fn setRelativeMouse(p: *Platform, enabled: bool) PlatformError!void {
         return p.vtable.set_relative_mouse(p.context, enabled);
-    }
-    pub fn netConnect(p: *Platform, endpoint: Endpoint) PlatformError!ConnectionId {
-        return p.vtable.net_connect(p.context, endpoint);
-    }
-    /// Starts to accept guests on `endpoint`. Each guest is a `connected` event.
-    pub fn netListen(p: *Platform, endpoint: Endpoint) PlatformError!void {
-        return p.vtable.net_listen(p.context, endpoint);
-    }
-    /// Stops accepting guests. Connections that are open stay open.
-    pub fn netStopListening(p: *Platform) void {
-        p.vtable.net_stop_listening(p.context);
-    }
-    pub fn netListenStatus(p: *Platform) ListenStatus {
-        return p.vtable.net_listen_status(p.context);
-    }
-    pub fn netSend(p: *Platform, connection: ConnectionId, message: []const u8) PlatformError!void {
-        return p.vtable.net_send(p.context, connection, message);
-    }
-    pub fn netClose(p: *Platform, connection: ConnectionId) void {
-        p.vtable.net_close(p.context, connection);
-    }
-    /// Queues an I/O workflow (`workflow.zig`). It starts at a later update boundary; its
-    /// completion comes through `ioTake`.
-    pub fn ioSubmit(p: *Platform, request: workflow.Request) workflow.SubmitError!workflow.JobId {
-        return p.vtable.io_submit(p.context, request);
-    }
-    /// The oldest published completion, or null. The caller owns it until `Completion.deinit`.
-    pub fn ioTake(p: *Platform) ?workflow.Completion {
-        return p.vtable.io_take(p.context);
-    }
-    /// Requests the cancellation of a job. A job that finished first keeps its result. Returns
-    /// false when the job is unknown, finished or taken.
-    pub fn ioCancel(p: *Platform, id: workflow.JobId) bool {
-        return p.vtable.io_cancel(p.context, id);
     }
 };
 

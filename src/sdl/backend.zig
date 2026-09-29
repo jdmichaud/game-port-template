@@ -11,16 +11,10 @@ const std = @import("std");
 const builtin = @import("builtin");
 const gameport = @import("gameport");
 const platform = gameport.platform;
-const workflow = gameport.workflow;
 const c = @import("sdl.zig");
 const eventlog = @import("eventlog.zig");
 
 pub const SdlBackend = struct {
-    /// The runner of the game's I/O workflows: the host's executor. Without one, a submission
-    /// is refused.
-    jobs: ?workflow.Jobs = null,
-    /// The network calls go to this transport, when the host has one.
-    net: platform.NetForward = .{},
     allocator: std.mem.Allocator,
     /// The host options, with `title` pointing to the backend's own NUL-terminated copy.
     options: platform.HostOptions,
@@ -154,15 +148,6 @@ pub const SdlBackend = struct {
         .audio_clear = audioClear,
         .audio_close = audioClose,
         .set_relative_mouse = setRelativeMouse,
-        .net_connect = netConnect,
-        .net_listen = netListen,
-        .net_stop_listening = netStopListening,
-        .net_listen_status = netListenStatus,
-        .net_send = netSend,
-        .net_close = netClose,
-        .io_submit = ioSubmit,
-        .io_take = ioTake,
-        .io_cancel = ioCancel,
     };
 
     fn cast(ctx: *anyopaque) *SdlBackend {
@@ -208,7 +193,7 @@ pub const SdlBackend = struct {
         self.last_event_ns = 0;
         c.SDL_StartTextInput();
         self.started = true;
-        self.capabilities = .{ .video = true, .audio = audio, .controllers = controllers, .network = false };
+        self.capabilities = .{ .video = true, .audio = audio, .controllers = controllers };
         return self.capabilities;
     }
 
@@ -490,7 +475,7 @@ pub const SdlBackend = struct {
 
     fn pollEvents(ctx: *anyopaque, dst: []platform.Event) usize {
         const self = cast(ctx);
-        const n = self.net.poll(dst, self.poll(dst));
+        const n = self.poll(dst);
         if (self.event_log) |w| {
             // A full log is only a diagnostic. It never causes the loss of an event for the game.
             for (dst[0..n]) |ev| eventlog.writeEvent(ev, w) catch {};
@@ -762,7 +747,7 @@ pub const SdlBackend = struct {
         self.audio = .{};
     }
 
-    // --- capture and network -----------------------------------------------------------------
+    // --- capture -------------------------------------------------------------------------
 
     /// Requests relative mode. A `capture_changed` event reports the state that SDL really
     /// reached, also when the request failed.
@@ -808,45 +793,6 @@ pub const SdlBackend = struct {
         self.pending.append(self.allocator, .{ .time_ns = t, .payload = .{ .capture_changed = self.captured } }) catch {};
         self.motion_residue_x = 0;
         self.motion_residue_y = 0;
-    }
-
-    fn netConnect(ctx: *anyopaque, endpoint: platform.Endpoint) platform.PlatformError!platform.ConnectionId {
-        return cast(ctx).net.connect(endpoint);
-    }
-
-    fn netListen(ctx: *anyopaque, endpoint: platform.Endpoint) platform.PlatformError!void {
-        return cast(ctx).net.listen(endpoint);
-    }
-
-    fn netStopListening(ctx: *anyopaque) void {
-        cast(ctx).net.stopListening();
-    }
-
-    fn netListenStatus(ctx: *anyopaque) platform.ListenStatus {
-        return cast(ctx).net.listenStatus();
-    }
-
-    fn netSend(ctx: *anyopaque, connection: platform.ConnectionId, message: []const u8) platform.PlatformError!void {
-        return cast(ctx).net.send(connection, message);
-    }
-
-    fn netClose(ctx: *anyopaque, connection: platform.ConnectionId) void {
-        cast(ctx).net.close(connection);
-    }
-
-    // --- I/O workflows -------------------------------------------------------------------------
-
-    fn ioSubmit(ctx: *anyopaque, request: workflow.Request) workflow.SubmitError!workflow.JobId {
-        const jobs = cast(ctx).jobs orelse return error.Closed;
-        return jobs.submit(request);
-    }
-    fn ioTake(ctx: *anyopaque) ?workflow.Completion {
-        const jobs = cast(ctx).jobs orelse return null;
-        return jobs.take();
-    }
-    fn ioCancel(ctx: *anyopaque, id: workflow.JobId) bool {
-        const jobs = cast(ctx).jobs orelse return false;
-        return jobs.cancel(id);
     }
 };
 
@@ -1189,7 +1135,6 @@ test "relative mouse requests report the actual capture state" {
     try std.testing.expectEqual(@as(usize, 1), p.pollEvents(&buf));
     try std.testing.expect(!buf[0].payload.capture_changed);
     try std.testing.expect(buf[0].time_ns <= p.nowNs());
-    try std.testing.expectError(error.Unsupported, p.netConnect(.{ .host = "localhost", .port = 1 }));
 }
 
 test "translation: keys, buttons, wheel direction and timestamps" {

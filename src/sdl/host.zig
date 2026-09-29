@@ -15,35 +15,15 @@ const SdlBackend = @import("backend.zig").SdlBackend;
 /// The rate of the fallback pacer, when the display does not pace the presentation.
 pub const fallback_hz: u32 = 60;
 
-/// Whether the standard executable refuses to start without an asset path. The placeholder game
+/// Whether the executable refuses to start without an asset path. The placeholder game
 /// runs without files; a port whose game needs the original's files sets this to true.
 pub const assets_required = false;
 
-pub const Content = union(enum) {
-    external,
-    embedded: []const gameport.memory.AssetEntry,
+const program_name = "gameport-sdl";
 
-    pub fn programName(self: Content) []const u8 {
-        return if (self == .embedded) "gameport-sdl-standalone" else "gameport-sdl";
-    }
-
-    pub fn usage(self: Content) []const u8 {
-        return if (self == .embedded) standalone_usage else external_usage;
-    }
-};
-
-const external_usage =
+pub const usage =
     \\usage: gameport-sdl [OPTIONS] [ASSET_PATH]
-    \\  ASSET_PATH           a game directory or a CD image (an ISO is recognised by its
-    \\                       signature)
-    \\
-++ common_usage;
-const standalone_usage =
-    \\usage: gameport-sdl-standalone [OPTIONS]
-    \\  The game's files are built into the program.
-    \\
-++ common_usage;
-const common_usage =
+    \\  ASSET_PATH           the directory of the original's files
     \\  --help, -h           show this help
     \\  --scale N            window scale, 1 to 64 (default 3)
     \\  --no-vsync           do not ask for display-paced presentation
@@ -82,33 +62,26 @@ pub const Options = struct {
     }
 };
 
-pub fn runWithContent(gpa: std.mem.Allocator, io: std.Io, environ: *const std.process.Environ.Map, options: Options, content: Content) !u8 {
+pub fn run(gpa: std.mem.Allocator, io: std.Io, environ: *const std.process.Environ.Map, options: Options) !u8 {
     var err_buf: [1024]u8 = undefined;
     var err_writer = std.Io.File.stderr().writerStreaming(io, &err_buf);
     const err = &err_writer.interface;
-    const name = content.programName();
+    const name = program_name;
 
     var ver_buf: [32]u8 = undefined;
     const check = version.checkVersion(&ver_buf);
     try err.print("{s}: SDL2 {s} linked (pinned {s})\n", .{ name, check.linked, check.pinned });
     try err.flush();
 
-    // The providers: the save directory, and the game directory or CD image of the positional
-    // argument. They outlive the game and the backend, which only borrow their interfaces.
+    // The providers: the save directory, and the game directory of the positional argument. They
+    // outlive the game and the backend, which only borrow their interfaces.
     var providers: native.cli.Providers = .empty;
     defer providers.deinit();
-    var provider_options = options.providers;
-    if (content == .embedded) provider_options.assets = null;
-    providers.open(gpa, io, environ, provider_options) catch |e| {
+    providers.open(gpa, io, environ, options.providers) catch |e| {
         std.log.err("cannot open the providers: {s}", .{@errorName(e)});
         return 1;
     };
-    // Built-in files for the standalone build, or an empty table when no asset path was given.
-    var memory_assets = gameport.memory.MemoryAssetSource.init(gpa);
-    defer memory_assets.deinit();
-    if (content == .embedded) for (content.embedded) |entry| try memory_assets.add(entry.name, entry.bytes);
-    const assets = providers.assetSource() orelse memory_assets.assetSource();
-    try err.print("{s}: assets: {s}, saves: {s}\n", .{ name, if (content == .embedded) "embedded" else @tagName(providers.kind), providers.saves_path });
+    try err.print("{s}: assets: {s}, saves: {s}\n", .{ name, @tagName(providers.kind), providers.saves_path });
     try err.flush();
 
     // The backend is made before the game and released after it.
@@ -127,14 +100,7 @@ pub fn runWithContent(gpa: std.mem.Allocator, io: std.Io, environ: *const std.pr
     defer out.flush() catch {};
     if (options.event_log_ns != null) backend.event_log = out;
 
-    // The executor of the game's I/O workflows: one job at a time, beside the frame loop, so no
-    // update waits for a file. It stops before the backend and the providers: its `deinit` cancels
-    // and joins the job that runs.
-    var executor = native.executor.Executor.init(gpa, io, assets, providers.storage(), .{});
-    defer executor.deinit();
-    backend.jobs = executor.jobs();
-
-    var game = try gameport.Game.init(gpa);
+    var game = try gameport.Game.init(gpa, providers.assetSource(), providers.storage());
     defer game.deinit();
 
     var p = backend.asPlatform();
@@ -145,8 +111,6 @@ pub fn runWithContent(gpa: std.mem.Allocator, io: std.Io, environ: *const std.pr
     const start_ns = p.nowNs();
     while (true) {
         const frames_before = game.frames_presented;
-        // Collect the job that finished, start the next one, and publish, before the update.
-        executor.update();
         const result = game.update(&p) catch |e| {
             std.log.err("game update failed: {s}", .{@errorName(e)});
             try out.flush();
@@ -219,7 +183,7 @@ pub const ArgError = error{ BadArguments, MissingAssets };
 
 /// Parses the command line from an iterator shaped like `std.process.Args.iterate()`, whose first
 /// item is the program name.
-pub fn parseArgsWithContent(iter: anytype, content: Content) ArgError!Options {
+pub fn parseArgs(iter: anytype) ArgError!Options {
     var args = iter;
     var options: Options = .{};
     _ = args.skip();
@@ -249,10 +213,7 @@ pub fn parseArgsWithContent(iter: anytype, content: Content) ArgError!Options {
             return error.BadArguments;
         }
     }
-    switch (content) {
-        .external => if (assets_required and !options.help and options.providers.assets == null) return error.MissingAssets,
-        .embedded => if (options.providers.assets != null) return error.BadArguments,
-    }
+    if (assets_required and !options.help and options.providers.assets == null) return error.MissingAssets;
     return options;
 }
 
@@ -284,17 +245,17 @@ const SliceArgs = struct {
 };
 
 test "the host options are parsed, bounded and defaulted" {
-    const defaults = try parseArgsWithContent(SliceArgs{ .items = &.{"gameport-sdl"} }, .external);
+    const defaults = try parseArgs(SliceArgs{ .items = &.{"gameport-sdl"} });
     try std.testing.expectEqual(@as(?u32, null), defaults.scale);
     try std.testing.expectEqual(@as(?bool, null), defaults.vsync);
     try std.testing.expectEqual(@as(?u64, null), defaults.deadlineNs());
 
-    const all = try parseArgsWithContent(SliceArgs{ .items = &.{ "gameport-sdl", "--scale", "2", "--no-vsync", "--software", "--event-log", "1.5", "--run-for", "1", "game.iso", "--saves", "saves" } }, .external);
+    const all = try parseArgs(SliceArgs{ .items = &.{ "gameport-sdl", "--scale", "2", "--no-vsync", "--software", "--event-log", "1.5", "--run-for", "1", "game", "--saves", "saves" } });
     try std.testing.expectEqual(@as(?u32, 2), all.scale);
     try std.testing.expectEqual(@as(?bool, false), all.vsync);
     try std.testing.expect(all.software);
     try std.testing.expectEqual(@as(?u64, 1_000_000_000), all.deadlineNs());
-    try std.testing.expectEqualStrings("game.iso", all.providers.assets.?);
+    try std.testing.expectEqualStrings("game", all.providers.assets.?);
     try std.testing.expectEqualStrings("saves", all.providers.saves.?);
 
     for ([_][]const []const u8{
@@ -303,15 +264,8 @@ test "the host options are parsed, bounded and defaulted" {
         &.{ "gameport-sdl", "--event-log", "-1" },
         &.{ "gameport-sdl", "--fps", "0" },
         &.{ "gameport-sdl", "--frobnicate" },
-        &.{ "gameport-sdl", "first.iso", "second.iso" },
-    }) |args| try std.testing.expectError(error.BadArguments, parseArgsWithContent(SliceArgs{ .items = args }, .external));
-}
-
-test "the standalone host refuses an asset path: its files are built in" {
-    const content = Content{ .embedded = &.{} };
-    const options = try parseArgsWithContent(SliceArgs{ .items = &.{ "gameport-sdl-standalone", "--saves", "saved-games" } }, content);
-    try std.testing.expect(options.providers.assets == null);
-    try std.testing.expectError(error.BadArguments, parseArgsWithContent(SliceArgs{ .items = &.{ "gameport-sdl-standalone", "game.iso" } }, content));
+        &.{ "gameport-sdl", "first", "second" },
+    }) |args| try std.testing.expectError(error.BadArguments, parseArgs(SliceArgs{ .items = args }));
 }
 
 test "the fallback pacer holds its period without accumulating debt" {

@@ -8,11 +8,6 @@
 /// The audio state that the page reports.
 pub const AudioState = enum(u32) { closed = 0, running = 1, suspended = 2, _ };
 
-/// The answers of `net_send`, as the page gives them.
-pub const send_ok: i32 = 0;
-pub const send_not_connected: i32 = -1;
-pub const send_queue_full: i32 = -2;
-
 pub const Host = struct {
     /// `performance.now()`: milliseconds from the start of the page, monotonic.
     now_ms: *const fn () f64,
@@ -36,12 +31,6 @@ pub const Host = struct {
     /// now. A browser locks the pointer only after a click, so the page also reports each later
     /// change.
     set_relative_mouse: *const fn (enabled: u32) u32,
-    /// Opens a WebSocket to `ws://HOST:PORT/ws`. Returns the connection id (1 or more), or a
-    /// negative number when the page cannot open it.
-    net_connect: *const fn (host: [*]const u8, host_len: u32, port: u32) i32,
-    /// Sends one binary message. Returns `send_ok`, `send_not_connected` or `send_queue_full`.
-    net_send: *const fn (connection: u32, bytes: [*]const u8, len: u32) i32,
-    net_close: *const fn (connection: u32) void,
     /// Writes one line to the browser's console: 0 error, 1 warning, 2 information, 3 debug.
     log: *const fn (level: u32, text: [*]const u8, len: u32) void,
     /// Keeps one of the game's records in the browser's storage for the page's address. Returns 1

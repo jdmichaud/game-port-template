@@ -1,6 +1,6 @@
 //! The provider contract cases. They use only the interfaces, so each implementation runs the same
-//! cases: the in-memory providers, the directory providers and the ISO source. A provider test
-//! fills its provider with `fixture` and calls `assetContract` or `storageContract`.
+//! cases: the in-memory providers, the directory providers, and any source a port adds. A provider
+//! test fills its provider with `fixture` and calls `assetContract` or `storageContract`.
 //! Allocation-failure sweeps wrap `exerciseAssets` or `exerciseStorage` in
 //! `std.testing.checkAllAllocationFailures`.
 const std = @import("std");

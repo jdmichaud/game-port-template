@@ -3,8 +3,8 @@
 //! directory, syncs it and renames it over the target. Thus a replacement is atomic, and a
 //! failure before the rename leaves the previous record intact and no temporary file. Temporary
 //! names start with a dot, which no key can do, so they never collide with records and never
-//! appear in listings. The single active workflow of the executor serialises the operations on
-//! one record, so this type has no locking of its own.
+//! appear in listings. The type has no locking of its own: one thread uses it, the game's, or a
+//! port that saves beside the updates serialises its jobs on one record.
 const std = @import("std");
 const builtin = @import("builtin");
 const gameport = @import("gameport");

@@ -25,9 +25,6 @@ const page = struct {
     extern "env" fn js_audio_clear() void;
     extern "env" fn js_audio_close() void;
     extern "env" fn js_set_relative_mouse(enabled: u32) u32;
-    extern "env" fn js_net_connect(host: [*]const u8, host_len: u32, port: u32) i32;
-    extern "env" fn js_net_send(connection: u32, bytes: [*]const u8, len: u32) i32;
-    extern "env" fn js_net_close(connection: u32) void;
     extern "env" fn js_log(level: u32, text: [*]const u8, len: u32) void;
     extern "env" fn js_storage_save(name: [*]const u8, name_len: u32, bytes: [*]const u8, len: u32) u32;
     extern "env" fn js_storage_delete(name: [*]const u8, name_len: u32) u32;
@@ -66,15 +63,6 @@ const imports = struct {
     fn setRelativeMouse(enabled: u32) u32 {
         return page.js_set_relative_mouse(enabled);
     }
-    fn netConnect(name: [*]const u8, name_len: u32, port: u32) i32 {
-        return page.js_net_connect(name, name_len, port);
-    }
-    fn netSend(connection: u32, bytes: [*]const u8, len: u32) i32 {
-        return page.js_net_send(connection, bytes, len);
-    }
-    fn netClose(connection: u32) void {
-        page.js_net_close(connection);
-    }
     fn log(level: u32, text: [*]const u8, len: u32) void {
         page.js_log(level, text, len);
     }
@@ -97,9 +85,6 @@ const host = Host{
     .audio_clear = imports.audioClear,
     .audio_close = imports.audioClose,
     .set_relative_mouse = imports.setRelativeMouse,
-    .net_connect = imports.netConnect,
-    .net_send = imports.netSend,
-    .net_close = imports.netClose,
     .log = imports.log,
     .storage_save = imports.storageSave,
     .storage_delete = imports.storageDelete,
@@ -137,7 +122,6 @@ const gpa = std.heap.wasm_allocator;
 var assets: gameport.memory.MemoryAssetSource = undefined;
 /// The game's records, kept by the page in the browser's storage.
 var storage: PageStorage = undefined;
-var jobs: gameport.workflow.Inline = undefined;
 var backend: WebBackend = undefined;
 var ready = false;
 var game: ?*gameport.Game = null;
@@ -154,9 +138,7 @@ export fn gp_init() i32 {
     if (ready) return 0;
     assets = gameport.memory.MemoryAssetSource.init(gpa);
     storage = PageStorage.init(gpa, &host);
-    jobs = gameport.workflow.Inline.init(gpa, assets.assetSource(), storage.storage());
     backend = WebBackend.init(gpa, &host);
-    backend.jobs = jobs.jobs();
     ready = true;
     return 0;
 }
@@ -211,7 +193,7 @@ export fn gp_start() i32 {
         last_error = err;
         return -1;
     };
-    g.* = gameport.Game.init(gpa) catch |err| {
+    g.* = gameport.Game.init(gpa, assets.assetSource(), storage.storage()) catch |err| {
         gpa.destroy(g);
         last_error = err;
         return -1;

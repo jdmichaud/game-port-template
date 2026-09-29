@@ -117,13 +117,6 @@ const FakePage = struct {
     fn relative(_: u32) u32 {
         return 0;
     }
-    fn netConnect(_: [*]const u8, _: u32, _: u32) i32 {
-        return -1;
-    }
-    fn netSend(_: u32, _: [*]const u8, _: u32) i32 {
-        return 0;
-    }
-    fn netClose(_: u32) void {}
     fn log(_: u32, _: [*]const u8, _: u32) void {}
 
     const host = Host{
@@ -137,9 +130,6 @@ const FakePage = struct {
         .audio_clear = noop,
         .audio_close = noop,
         .set_relative_mouse = relative,
-        .net_connect = netConnect,
-        .net_send = netSend,
-        .net_close = netClose,
         .log = log,
         .storage_save = storageSave,
         .storage_delete = storageDelete,
