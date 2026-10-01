@@ -167,13 +167,17 @@
 
 - [ ] **24 — Browser build and I/O** — Depends: 18.
   - `wasm32-freestanding` without libc or compiler-rt, memory and helper imports from the page,
-    the files fetched before the first update (streaming I/O only if play needs it).
-  - Gate: the build checks its import list; ownership, memory growth and cleanup are exercised.
+    the files fetched before the first update from the server that sends the page (streaming I/O
+    only if play needs it), never picked or uploaded by the player (DESIGN.md section 5.3).
+  - Gate: the build checks its import list; ownership, memory growth and cleanup are exercised;
+    served by the native game, the page loads every file from it, and without a manifest it stops
+    with a message.
 
 - [ ] **25 — Browser host services** — Depends: 24.
   - Canvas, input and pointer lock, Web Audio, storage, TODO(the transport).
   - Gate: the game runs in Chromium and Firefox; its records survive a reload; the user gesture
-    that audio and pointer lock need is handled.
+    that audio and pointer lock need is handled; from the first frame (loading, click to start,
+    errors) the page is in the game's style, checked on screenshots against the native game.
 
 - [ ] **26 — Browser acceptance** — Depends: 25.
   - The reference scenarios and multiplayer in the declared browsers; size and latency measured.

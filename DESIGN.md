@@ -254,6 +254,19 @@ support it), behind the I/O workflows of section 4.
 The browser keeps the game's records in its own storage, per address, and gives them back before
 the game starts.
 
+**Where the game's files come from.** The server that sends the page serves them: the page reads
+`assets/manifest.json` and fetches each `assets/NAME` it lists, and that server is the native game,
+reading the user's copy through its `AssetSource` (section 9). The page never asks the player to
+pick or upload the original's files. A page without a manifest says so and stops; it does not run
+a game without its files.
+
+**The page looks like the game.** The player sees the game's style from the first frame. The page
+fetches first the few files the module needs to draw a screen, and from then on the module draws
+the loading screen and its progress itself, in the game's own palette, font and boxes. Until then,
+and for an error, the page's own text stands in, in the game's colours and the closest font, never
+in a browser or framework style. Messages reach the player in the game's words and look, not as
+browser dialogs.
+
 ### 5.4 A build with the game's files inside (optional)
 
 A port may offer an SDL game with the gameplay files built in, for users who own the original:

@@ -503,7 +503,10 @@ function gameportHelpers(memory) {
     wasm.gp_init();
 
     // The game's files: `assets/manifest.json` lists them as {"files": [{"name", "size"}]}. The
-    // server that sends the page serves them; the skeleton's placeholder game runs without any.
+    // server that sends the page serves them; the player never uploads them (DESIGN.md section
+    // 5.3). The skeleton's placeholder game runs without any, so a missing manifest is tolerated
+    // here; a port whose game needs files makes it an error that stops with a message. Fetch first
+    // the files the module needs to draw its loading screen in the game's style.
     // Six are fetched at a time, and a file of another size than the listed one stops the load:
     // a server's error page is not a game file.
     let files = [];
