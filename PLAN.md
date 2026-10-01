@@ -197,7 +197,8 @@
     copy.
   - Gate, checked at each milestone: in a fresh clone with an empty environment, `zig build`,
     `zig build test` (no test skipped), `smoke`, `verify`, `web` and TODO(the port's own suites)
-    pass.
+    pass; and each executable, copied alone into an empty directory, runs (with network play, it
+    serves its page, script and module with its server options).
 
 ## Additions to the original
 
@@ -211,6 +212,7 @@ each with a scope and a gate like the items above.
 - [ ] **D2 — First network transport**: TODO(for example: the native game serves a page that runs
   the game in the browser, and the two exchange the session protocol over a WebSocket; and a relay
   mode of the same server, where two browsers play and the first to connect hosts: DESIGN.md
-  section 9).
+  section 9). The executable serves the page, script and module built into it, never files beside
+  it.
 - Pin concrete versions and API schemas within their owning items; they are not reasons to reopen
   settled architecture.

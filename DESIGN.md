@@ -26,6 +26,9 @@ errors, memory ownership, asynchronous operations and the frame format explicit.
 - **Static linking where practical** (section 8).
 - **The repository stands alone.** No file of the original enters the repository, and no build or
   test needs one; a build that embeds the game's files takes a copy the user supplies.
+- **Each executable is self-contained.** At run time it reads only the user's copy of the game's
+  files, its settings and its saves. Nothing it needs is installed beside it, and no option points
+  it at such files.
 
 ## 2. The platform boundary
 
@@ -333,6 +336,11 @@ The transport delivers whole messages, reliably and in order, while a connection
 means accepted into a bounded queue; received messages arrive through `pollEvents`. The first
 transport is decision D2 of the plan (in a previous port, the native game served the browser build
 and a WebSocket on one port).
+
+The native game serves the browser build from inside itself. `build.zig` embeds the page, the
+script and the module into the executable (a generated module with `@embedFile`, the same way the
+module-import check reads them), so there is no `web` directory to serve and no option to serve
+one. The game files the guest loads come from the host's `AssetSource`, the user's copy.
 
 Two browsers can also play with no native game (in a previous port, `--server ADDRESS:PORT`). The
 native program then only serves the page and relays the session's binary messages between two
