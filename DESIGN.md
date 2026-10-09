@@ -29,7 +29,8 @@ errors, memory ownership, asynchronous operations and the frame format explicit.
 - **Each executable is self-contained.** At run time it reads only the user's copy of the game's
   files, its settings and its saves. Nothing it needs is installed beside it, and no option points
   it at such files. A tool for the user's files (an extractor, a converter) is a mode of the game's
-  binary (`--extract DIR`), not another executable.
+  binary (`--extract DIR`), not another executable; better still, the game reads the original's
+  files as the user has them (a ROM, a CD image) and needs no extraction.
 
 ## 2. The platform boundary
 
@@ -218,8 +219,8 @@ interpretation, audio scheduling and loading run through the same code as in the
   last frame's hash. Diagnostics go to standard error.
 - Saves go to an in-memory store or to a directory the caller names; never to the user's.
 
-A port grows it only with what its checks use. Three ports never needed more than command-line
-injection and the hashes.
+A port grows it only with what its checks use. Three ports drove it entirely from its command line
+(scenario files and semantic traces included); none needed a protocol on standard input.
 
 The agent host is how the port is driven end to end without a display, and how a test reproduces
 a defect. It is not the game the user runs: gates also run the SDL build (`docs/testing.md`).
