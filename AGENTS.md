@@ -36,14 +36,14 @@ Rules:
   outside the repository, with a reproduction. If it blocks the work, stop and raise the flag.
 - Put scratch output (builds, captures, screenshots, logs) under /tmp/<project>, never in the
   repository or in zig-out, and delete it when the check is done.
-- Never write into the original's files: copy the game directory before an emulator runs it.
+- Never write into the original's files: copy them before an emulator runs them.
 - Stop processes by PID. `pkill -f` and `pgrep -f` also match the caller's own command line. Stop
   emulators, X servers and hosts when a check ends.
 - Look before touching: `git status`, the stashes, the branches and the worktrees. The user's
   uncommitted work and stashes are theirs: never stash, drop or overwrite them.
 - With the user: a short status line during long work; ask only decisions that are the user's,
-  with the options and a recommendation; give steps to reproduce, since the user plays on another
-  machine.
+  with the options and a recommendation; give steps to reproduce, since the user often plays on
+  another machine.
 - Helpers (subagents, forks) get a precise brief (their files, what they must not touch, how they
   verify) and their own `/tmp/<project>/<task>`. Review every diff and check its claims before it
   lands.

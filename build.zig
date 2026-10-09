@@ -3,15 +3,13 @@
 //! Targets:
 //!   gameport-agent  headless debugging host (shared game + AgentBackend), never links SDL
 //!   gameport-sdl    SDL interactive host (Linux, Windows)
-//!   web/            the browser build: gameport.wasm, index.html, gameport.js
-//! Steps: `zig build` installs the two binaries; `agent` and `sdl` install one of them; `web`
-//! installs the browser build and checks its module's imports; `web-check` checks the page's
-//! helper functions against compiler-rt (it needs Node.js); `test` runs the unit tests of every
-//! module; `smoke` runs the agent host for a few frames; `verify` checks that the agent binary has
-//! no SDL dependency; `compile` checks formatting and compiles every binary and test binary
-//! without running anything (every commit); `check` runs compile, test, smoke, verify and web
-//! (every batch handed over); `all` installs every binary of the target and of Windows (under
-//! <prefix>/windows) and the browser build.
+//! Steps: `zig build` installs the two binaries; `agent` and `sdl` install one of them; `test` runs
+//! the unit tests of every module; `smoke` runs the agent host for a few frames; `verify` checks
+//! that the agent binary has no SDL dependency; `compile` checks formatting and compiles every
+//! binary and test binary without running anything (every commit); `check` runs compile, test,
+//! smoke and verify (every batch handed over); `all` installs every binary of the target and of
+//! Windows (under <prefix>/windows). Optional parts (src/web/build.zig) add their own steps and
+//! hook into compile, test, check and all.
 const std = @import("std");
 const builtin = @import("builtin");
 const web = @import("src/web/build.zig");
@@ -157,7 +155,7 @@ pub fn build(b: *std.Build) void {
     b.step("verify", "Check the agent host binary links no SDL library").dependOn(&no_sdl.step);
 
     // `check`: everything above, once per batch of work handed over.
-    const check_step = b.step("check", "compile, test, smoke and verify (and web): before handing over a batch");
+    const check_step = b.step("check", "compile, test, smoke and verify: before handing over a batch");
     for ([_]*std.Build.Step{ compile_step, test_step, &smoke.step, &no_sdl.step }) |s| check_step.dependOn(s);
 
     // `all`: every binary of the target and of Windows, and the browser build. The Windows binaries come from a second build for the
