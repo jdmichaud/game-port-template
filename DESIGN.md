@@ -211,15 +211,14 @@ interpretation, audio scheduling and loading run through the same code as in the
 
 - A virtual clock: time advances only when the host says so, never with the time an agent spends
   thinking.
-- The skeleton's host runs a number of frames, presses the keys named on the command line at
-  their frames, and prints one JSON line: counters, the state's hash and the last frame's hash.
-  Diagnostics go to standard error.
+- Everything comes from the command line: the number of frames, the input injected at given
+  frames (keys in the skeleton; buttons, axes and held inputs as the game needs), and what to
+  write (a frame's PNG, the PCM). It prints one JSON line: counters, the state's hash and the
+  last frame's hash. Diagnostics go to standard error.
 - Saves go to an in-memory store or to a directory the caller names; never to the user's.
 
-A port grows it with the game: previous ports gave it a JSON-lines protocol on standard input
-and output, with commands to reset, inject timestamped events, step a number of updates or run
-until a condition, inspect state, and capture the frame and the PCM, each run bounded by work,
-virtual-time and wall-clock limits that the response names. Grow only what the checks use.
+A port grows it only with what its checks use. Three ports never needed more than command-line
+injection and the hashes.
 
 The agent host is how the port is driven end to end without a display, and how a test reproduces
 a defect. It is not the game the user runs: gates also run the SDL build (`docs/testing.md`).
