@@ -78,7 +78,7 @@ The placeholder name of the project is `gameport`.
   links SDL. A port grows it into the driver its checks need.
 - `src/native`: host I/O for the native targets: the directory asset source, the directory
   storage, their shared contract tests, and the command line.
-- `src/sdl`: `gameport-sdl`, the interactive host on SDL2, for Linux and Windows.
+- `src/sdl`: `gameport-sdl`, the interactive host on SDL3, for Linux and Windows.
 - `src/web`: the browser build: the WebAssembly module, its backend, the page and its script.
 - `tools`: build helpers only: the check that the agent binary links no SDL. Tools that study the
   original do not belong here.

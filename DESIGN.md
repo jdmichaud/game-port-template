@@ -20,7 +20,7 @@ errors, memory ownership, asynchronous operations and the frame format explicit.
   original's addresses and register conventions stay in the `-re` port maps (section 10).
 - **Linux/SDL first, the agent host alongside.** The headless agent host drives the same game
   without a window from the first items. Windows and the browser follow on the same shared code.
-- **Few dependencies.** Zig and SDL2 for the native game; nothing beyond the browser for the
+- **Few dependencies.** Zig and SDL3 for the native game; nothing beyond the browser for the
   browser build.
 - **Static linking where practical** (section 8).
 - **The repository stands alone.** No file of the original enters the repository, and no build or
@@ -283,18 +283,19 @@ The toolchain is pinned (`build.zig.zon`, `build.zig`). The modules, and what ea
   providers.
 - `agent`, nothing: the agent backend and host.
 - `native`, nothing: host I/O: the directory source and storage, and the command line.
-- `sdl`, libc and SDL2: the SDL backend and host.
+- `sdl`, libc and SDL3: the SDL backend and host. SDL's API comes from its headers, translated
+  by `build.zig`: no SDL declaration is written by hand.
 
-- **Linux.** SDL2 is linked from its static archive; the system libraries it needs (X11, Wayland,
-  PulseAudio, ALSA) stay dynamic because they have no practical static builds. A build option
-  links the shared SDL2 instead.
+- **SDL3** comes from a Zig package (`build.zig.zon`), compiled from source and linked statically
+  on every target: one pinned release, no system SDL. The first build fetches it and its vendored
+  headers once.
+- **Linux.** The SDL host links only libc and libm; SDL loads X11, Wayland, PipeWire, PulseAudio
+  and ALSA at run time.
 - **The agent host** links nothing but the Zig standard library; built for a musl target it is a
-  fully static binary. The `verify` step checks that it has no SDL dependency.
-- **Windows.** `-Dtarget=x86_64-windows-gnu`, which needs nothing from Windows to build. SDL2 comes
-  from a Zig package (a build of SDL2 by Zig, added with `zig fetch` as a lazy dependency), is
-  compiled from source and linked statically: the executables import only Windows' own libraries
-  and the Universal C runtime. The SDL host is a console program and declares per-monitor DPI
-  awareness through SDL's hint.
+  fully static binary. The `verify` step checks that it contains no SDL.
+- **Windows.** `-Dtarget=x86_64-windows-gnu`, which needs nothing from Windows to build: the
+  executables import only Windows' own libraries and the Universal C runtime. The SDL host is a
+  console program; SDL3 declares per-monitor DPI awareness itself.
 - **The browser.** `wasm32-freestanding`, no libc and no compiler-rt (`docs/browser.md`).
 
 ## 9. Networking

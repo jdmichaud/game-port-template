@@ -70,6 +70,9 @@ play's in `docs/network.md`.
 - **A killed or confused Zig build** can leave a stale cache and binary: rebuild from a fresh
   `--cache-dir`. On a network-mounted tree with coarse or skewed timestamps, a file restored within
   the same second can look unchanged to Zig's cache and to `zig fmt`.
+- **On an sshfs mount, directory listings report every entry's kind as unknown**, and Zig 0.17's
+  directory copy skips such entries: an installed header tree can come out empty. Keep the Zig
+  caches on a local disk.
 - **Wine** runs most unit tests of a Windows build, but not sockets, child-process timeouts or
   pointer motion; the Windows gate needs Windows.
 - **Zig 0.17**: no `@cImport`; translate the C headers in `build.zig`
