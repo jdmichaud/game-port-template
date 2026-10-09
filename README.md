@@ -7,7 +7,7 @@ previous ports arrived at; the examples in its documents come from them.
 The template has two parts:
 
 - **The way of working.** The rules for agents (`AGENTS.md`), the plan (`PLAN.md`), the design
-  (`DESIGN.md`), and the notes in `docs/` on the process, the tests, the study of the original and
+  (`DESIGN.md`), and the notes in `docs/` on the tests, the study of the original and
   the lessons learned.
 - **A skeleton that builds and tests as it is.** The platform boundary, the three hosts (a
   headless agent host, an SDL host and a browser build) and a placeholder game in place of the
@@ -63,8 +63,6 @@ The placeholder name of the project is `gameport`.
 - `AGENTS.md`: the rules for agents working in the repository. Read it first.
 - `PLAN.md`: the work, in phases and items, each with a scope and a gate.
 - `DESIGN.md`: the technical design: the platform boundary, the hosts, determinism, the builds.
-- `docs/process.md`: how a session and an item go, and how to work with the user and with
-  subagents.
 - `docs/testing.md`: what is tested, how, and what may be committed as reference data.
 - `docs/reverse-engineering.md`: how to study the original: sources, oracles, emulators, port
   maps.
