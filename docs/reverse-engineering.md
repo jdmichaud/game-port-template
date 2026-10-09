@@ -35,6 +35,18 @@ outside the repository; only its recorded outputs enter it (`docs/testing.md`).
 
 ## Oracles
 
+Use the cheapest oracle that answers the question:
+
+- **A verified translation of the original**, if one exists (an earlier remaster, a checked
+  decompilation), run headless beside the port: compare semantic traces (entities, events, draw
+  calls) tick by tick. It is far cheaper than an emulator and compares meaning, not bytes.
+- **An emulator you can instrument**: memory watches with the writing instruction, tick and input
+  events, frame boundaries, deterministic replay of an input file from power-on. Previous ports
+  used a DOSBox build with a small trace hook and a headless Mega Drive debugger with a trace mode.
+  It beats screen capture, injected window events and live reads of the emulator's memory, which
+  are the fallback below.
+- **Routines under an interpreter** for leaf routines and whole call trees (next section).
+
 ### Routines under an interpreter
 
 An interpreter or CPU emulator runs one of the original's routines, and the routines it calls, on
