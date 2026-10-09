@@ -28,7 +28,8 @@ errors, memory ownership, asynchronous operations and the frame format explicit.
   test needs one; a build that embeds the game's files takes a copy the user supplies.
 - **Each executable is self-contained.** At run time it reads only the user's copy of the game's
   files, its settings and its saves. Nothing it needs is installed beside it, and no option points
-  it at such files.
+  it at such files. A tool for the user's files (an extractor, a converter) is a mode of the game's
+  binary (`--extract DIR`), not another executable.
 
 ## 2. The platform boundary
 
