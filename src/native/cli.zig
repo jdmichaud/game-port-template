@@ -147,6 +147,27 @@ pub fn defaultSaveDirectory(allocator: std.mem.Allocator, environ: *const std.pr
 
 const contract = @import("contract.zig");
 
+/// Fails when an option that `source` parses (an equality test of `arg` against a string literal)
+/// is missing from `usage_text`: each program's test passes its own source, so its help cannot
+/// drift from its parser.
+pub fn expectUsageNames(source: []const u8, usage_text: []const u8) !void {
+    const pattern = "eql(u8, arg, \"";
+    var rest = source;
+    while (std.mem.indexOf(u8, rest, pattern)) |at| {
+        rest = rest[at + pattern.len ..];
+        const end = std.mem.indexOfScalar(u8, rest, '"') orelse break;
+        const option = rest[0..end];
+        if (option.len > 2 and std.mem.indexOf(u8, usage_text, option) == null) {
+            std.debug.print("the option {s} is parsed but not in the usage\n", .{option});
+            return error.OptionMissingFromUsage;
+        }
+    }
+}
+
+test "every option the shared parser takes is in its usage" {
+    try expectUsageNames(@embedFile("cli.zig"), usage);
+}
+
 fn testEnviron(allocator: std.mem.Allocator, pairs: []const [2][]const u8) !std.process.Environ.Map {
     var map = std.process.Environ.Map.init(allocator);
     for (pairs) |pair| try map.put(pair[0], pair[1]);

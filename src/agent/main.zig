@@ -101,3 +101,7 @@ fn fail(io: std.Io) !void {
     try w.interface.flush();
     std.process.exit(2);
 }
+
+test "every option the agent host parses is in its usage" {
+    try native.cli.expectUsageNames(@embedFile("main.zig"), usage);
+}

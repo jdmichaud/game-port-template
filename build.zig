@@ -233,7 +233,7 @@ pub fn build(b: *std.Build) void {
 
     // Unit tests of every module. The tests of the SDL module link SDL2 as the host does.
     const test_step = b.step("test", "Run the unit tests of every module");
-    const unit_modules = [_]*std.Build.Module{ shared, agent, native, sdl, web_parts };
+    const unit_modules = [_]*std.Build.Module{ shared, agent, native, sdl, web_parts, agent_exe.root_module };
     for (unit_modules) |m| {
         const t = b.addTest(.{ .root_module = m });
         compile_step.dependOn(&t.step);

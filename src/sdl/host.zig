@@ -244,6 +244,10 @@ const SliceArgs = struct {
     }
 };
 
+test "every option the SDL host parses is in its usage" {
+    try native.cli.expectUsageNames(@embedFile("host.zig"), usage);
+}
+
 test "the host options are parsed, bounded and defaulted" {
     const defaults = try parseArgs(SliceArgs{ .items = &.{"gameport-sdl"} });
     try std.testing.expectEqual(@as(?u32, null), defaults.scale);
