@@ -49,11 +49,11 @@ The placeholder name of the project is `gameport`.
    the video modes, the sound hardware, the input devices, the network, and the subsystems that
    the port maps will cover. The rest of the design applies as it is; change it only with the
    user's approval.
-4. **Plan the first items.** `PLAN.md` holds the phases that previous ports went through, with
-   placeholders where the game decides. Fill in the scope and the gate of the first items, and
-   commit the plan before the work starts.
-5. **Check the start.** The steps are listed at the top of `build.zig`: `zig build`, `zig build
-   test` and `zig build smoke` pass on the skeleton before the first change. `zig build all`
+4. **Plan the first items.** `PLAN.md` holds its rules, the phases previous ports went through,
+   and room for the game's own items. Write the first items with their scope and gate, and commit
+   the plan before the work starts.
+5. **Check the start.** The steps are listed at the top of `build.zig`: `zig build check` passes
+   on the skeleton before the first change. `zig build all`
    builds every binary at once: this machine's, Windows's under `zig-out/windows`, and the browser
    build.
 6. **Replace the placeholder game.** `src/shared/game.zig` is where the real game grows, behind
@@ -62,7 +62,7 @@ The placeholder name of the project is `gameport`.
 ## The folder
 
 - `AGENTS.md`: the rules for agents working in the repository. Read it first.
-- `PLAN.md`: the work, in phases and items, each with a scope and a gate.
+- `PLAN.md`: the work, as items with a scope and a gate, and the user's dated decisions.
 - `DESIGN.md`: the technical design: the platform boundary, the hosts, determinism, the builds.
 - `docs/testing.md`: what is tested, how, and what may be committed as reference data.
 - `docs/lessons.md`: the lessons and traps of previous ports that apply to any port.

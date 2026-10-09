@@ -274,7 +274,7 @@ the game then disables what needs it.
 - **Saves.** One versioned format per kind of record (settings, a game in progress, ...). A record
   of another version is refused, not converted: no readers for old versions.
 - **The original's own files** (its saves, its configuration) are the original's formats, read
-  by importers; whether the port also writes them is decision D1 of the plan.
+  by importers; whether the port also writes them is the user's decision (`PLAN.md`, Decisions).
 
 ## 8. Builds and linking
 
