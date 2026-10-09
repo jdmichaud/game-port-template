@@ -37,9 +37,11 @@ outside the repository; only its recorded outputs enter it (`docs/testing.md`).
 
 Use the cheapest oracle that answers the question:
 
-- **A verified translation of the original**, if one exists (an earlier remaster, a checked
-  decompilation), run headless beside the port: compare semantic traces (entities, events, draw
-  calls) tick by tick. It is far cheaper than an emulator and compares meaning, not bytes.
+- **The project's own translation of the original**, if one exists and has been checked against
+  it (an earlier remaster, a verified decompilation), run headless beside the port: compare
+  semantic traces (entities, events, random draws) tick by tick. It is far cheaper than an
+  emulator and compares meaning, not bytes. A third-party reimplementation is at most a lead, and
+  only if the user allows it.
 - **An emulator you can instrument**: memory watches with the writing instruction, tick and input
   events, frame boundaries, deterministic replay of an input file from power-on. Previous ports
   used a DOSBox build with a small trace hook and a headless Mega Drive debugger with a trace mode.
