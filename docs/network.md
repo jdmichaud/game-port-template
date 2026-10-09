@@ -19,6 +19,9 @@ game:
   only once every peer's input for it is in. The delay (2 to 6 ticks in a previous port) is chosen
   from the measured round trip; the state hash is compared every few ticks.
 
+Lockstep runs at the slower peer's pace: a line per machine (ticks run, time busy, time waiting,
+round trip) tells a slow machine from a slow link.
+
 In both, a mismatch pauses the game with its diagnostics, a disconnect keeps the session's epoch,
 and a duplicated message never acts twice.
 
@@ -55,8 +58,10 @@ from captured packets first, then its session rules.
 
 ## Testing
 
-The test that matters most: two sessions in one process over a fake link with latency, losses and
-reordering, run for whole games, compared by state hash. Then two real machines.
+The test that matters most: two sessions in one process over a fake link, run for whole games and
+compared by state hash. The link has latency (a delay too short for the game's must hold both
+peers, not split them) and a dropped connection that reconnects into the same session; it does
+not lose or reorder messages, which the transport's contract excludes. Then two real machines.
 
 ## Items a port adds to its plan
 
