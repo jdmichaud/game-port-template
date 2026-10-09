@@ -53,6 +53,10 @@ play's in `docs/network.md`.
 - **A loop that presents nothing must not spin**: display pacing only paces a present.
 - **Audio in sample frames**: count music time in samples, and schedule each effect against the
   frame that shows its cause.
+- **The audio queue's lead must exceed a device period plus a host frame**, for every sound
+  producer, or the device plays silence each period: a 20 ms lead against 1,024-frame periods
+  chopped every effect at 43 Hz. Check the device's output (SDL's `disk` audio driver, counting
+  runs of exact zeros), not the queued PCM, which the agent host sees.
 - **One save format**: one version per kind of record; every change is breaking.
 - **Menus that write their own bytes** need a writable copy of the original's image.
 - **A work budget must not change results**: limit the events per update, never their order.
