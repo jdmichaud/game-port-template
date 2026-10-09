@@ -58,14 +58,17 @@ pub fn build(b: *std.Build) void {
     // the binary links only libc; SDL loads X11, Wayland and the sound servers at run time. SDL is
     // optimised whatever the game's mode. Its headers are translated into the `c` module: no SDL
     // declaration is written by hand.
-    const sdl_lib = b.dependency("sdl3", .{ .target = target, .optimize = .ReleaseFast }).artifact("SDL3");
+    const sdl_pkg = b.dependency("sdl3", .{ .target = target, .optimize = .ReleaseFast });
+    const sdl_lib = sdl_pkg.artifact("SDL3");
     const sdl_c = b.addTranslateC(.{
         .root_source_file = b.path("src/sdl/c.h"),
         .target = target,
         .optimize = optimize,
         .link_libc = true,
     });
-    sdl_c.addIncludePath(sdl_lib.getEmittedIncludeTree());
+    // SDL's own include directory, not the package's installed copy of it: on an sshfs mount Zig
+    // 0.17's directory copy skips files, and the copy came out with 11 headers of about 100.
+    sdl_c.addIncludePath(sdl_pkg.builder.dependency("sdl", .{}).path("include"));
 
     // SDL platform: the only module that links SDL3, and thus libc. It imports `native` for the
     // asset and save providers of the host, which link nothing.
