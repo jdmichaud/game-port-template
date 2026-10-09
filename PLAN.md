@@ -1,8 +1,8 @@
 # gameport implementation plan
 
 - Design: `DESIGN.md`. Tests: `docs/testing.md`.
-- Unchecked items are open work. Priorities set the delivery order; dependencies name the
-  prerequisites.
+- Unchecked items are open work, in the order they are to be done; dependencies name the
+  prerequisites. The user's decisions are recorded under Decisions, each with its date.
 - An item is a title, its dependencies, one line of scope and a gate. Complete it through small
   commits with its tests; tick it ([x]) when the gate is met. A partly done item may carry checked
   and unchecked sub-points. No commentary: evidence goes in commit messages and docs.
@@ -210,6 +210,8 @@ Items the original does not have, added at the user's request, one per addition 
 each with a scope and a gate like the items above.
 
 ## Decisions
+
+Each with the date the user took it; a decision that changes is edited, and git log keeps the old.
 
 - [ ] **D1 — Saved-position interchange**: TODO(whether the port imports the original's save
   files, and whether it writes them).

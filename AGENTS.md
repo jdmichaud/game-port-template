@@ -16,6 +16,8 @@ Rules:
   rationale in the commit message. When an item's gate is met, flag it ([x]). The plan holds
   items, scopes and gates, not commentary.
 - DO NOT modify DESIGN.md without explicit approval.
+- This file holds rules only. A user's decision goes under PLAN.md's Decisions with its date; the
+  priority is the plan's order; history is git log. Nothing here is dated or "current".
 - Use as few dependencies as possible.
 - Link native binaries statically when practical. Depend on a dynamic library only when no other
   practical choice is possible.
