@@ -72,6 +72,7 @@ play's in `docs/network.md`.
   the same second can look unchanged to Zig's cache and to `zig fmt`.
 - **Wine** runs most unit tests of a Windows build, but not sockets, child-process timeouts or
   pointer motion; the Windows gate needs Windows.
-- **Zig 0.17**: no `@cImport` (declare SDL's externs by hand); `@enumFromInt` became
+- **Zig 0.17**: no `@cImport`; translate the C headers in `build.zig`
+  (`b.addTranslateC(...).createModule()`) and write no extern by hand. `@enumFromInt` became
   `@fromBackingInt`; `std.process.Args.iterate` does not compile for Windows (use
   `iterateAllocator`), and there is no `setenv` (set SDL's hints with override priority).
