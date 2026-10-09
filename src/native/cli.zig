@@ -150,18 +150,42 @@ const contract = @import("contract.zig");
 /// Fails when an option that `source` parses (an equality test of `arg` against a string literal)
 /// is missing from `usage_text`: each program's test passes its own source, so its help cannot
 /// drift from its parser.
+/// A parser written another way (a switch, a map) finds no option here and fails, rather than pass
+/// with nothing checked.
 pub fn expectUsageNames(source: []const u8, usage_text: []const u8) !void {
     const pattern = "eql(u8, arg, \"";
+    var found: usize = 0;
     var rest = source;
     while (std.mem.indexOf(u8, rest, pattern)) |at| {
         rest = rest[at + pattern.len ..];
         const end = std.mem.indexOfScalar(u8, rest, '"') orelse break;
         const option = rest[0..end];
-        if (option.len > 2 and std.mem.indexOf(u8, usage_text, option) == null) {
+        if (option.len <= 2) continue;
+        found += 1;
+        if (!namesOption(usage_text, option)) {
             std.debug.print("the option {s} is parsed but not in the usage\n", .{option});
             return error.OptionMissingFromUsage;
         }
     }
+    if (found == 0) return error.NoOptionFound;
+}
+
+/// Whether `text` holds `option` as a whole word: `--run` is not named by `--run-for`.
+fn namesOption(text: []const u8, option: []const u8) bool {
+    var from: usize = 0;
+    while (std.mem.indexOfPos(u8, text, from, option)) |at| {
+        const after = at + option.len;
+        if (after == text.len or !(std.ascii.isAlphanumeric(text[after]) or text[after] == '-' or text[after] == '_'))
+            return true;
+        from = at + 1;
+    }
+    return false;
+}
+
+test "an option is named as a whole word, and a parser with no option fails" {
+    try std.testing.expect(namesOption("  --run-for N  ...\n  --run N", "--run"));
+    try std.testing.expect(!namesOption("  --run-for N", "--run"));
+    try std.testing.expectError(error.NoOptionFound, expectUsageNames("switch (x) {}", "--a"));
 }
 
 test "every option the shared parser takes is in its usage" {
