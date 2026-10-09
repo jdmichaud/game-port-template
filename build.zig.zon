@@ -7,18 +7,16 @@
     // build.zig stops on another Zig release or a development snapshot of this one.
     .minimum_zig_version = "0.17.0",
     .dependencies = .{
-        .sdl2 = .{
-            .url = "git+https://github.com/allyourcodebase/SDL?ref=SDL2#eeba46bd2f847355b0bcf41b38380beffb395779",
-            .hash = "SDL-2.32.10-JToi37O3EgEYuel13OaBpZXIS406c6ykvPFrqm-u1X8W",
-            // Only a Windows build fetches it: SDL2 from source, built by Zig (build.zig).
-            .lazy = true,
+        // SDL3 built from source by Zig, for Linux and Windows alike (build.zig).
+        .sdl3 = .{
+            .url = "git+https://github.com/allyourcodebase/SDL#540fe66af2ca5050fc1aabdf7a19cf462ea0312e",
+            .hash = "sdl-1.0.2+3.4.16-i4QD0fCvqQBBggvApPLDHmSCoZSBDZALnEyM9m_-CQXY",
         },
     },
     .paths = .{
         "build.zig",
         "build.zig.zon",
         "src",
-        "tests",
         "tools",
         "docs",
         "README.md",

@@ -1,8 +1,8 @@
-//! `SdlBackend`: the Linux/SDL platform (DESIGN.md). It presents through a window,
+//! `SdlBackend`: the SDL platform of Linux and Windows (DESIGN.md). It presents through a window,
 //! a renderer and one streaming RGBA32 texture. It translates SDL's event queue into the
-//! project's events, with monotonic nanosecond time stamps. The performance counter is the
-//! clock. SDL's queued-audio API implements the bounded PCM queue contract. An event reports the
-//! relative mouse capture. This file has no palette logic and no game knowledge.
+//! project's events, with monotonic nanosecond time stamps from SDL's own clock. An SDL audio
+//! stream implements the bounded PCM queue contract. An event reports the relative mouse capture.
+//! This file has no palette logic and no game knowledge.
 //!
 //! `SDL_InitSubSystem` starts each subsystem, and each one is released separately, so several
 //! backends (or the tests) can exist in one process. `deinit` is valid after a successful or a
@@ -11,7 +11,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 const gameport = @import("gameport");
 const platform = gameport.platform;
-const c = @import("sdl.zig");
+const c = @import("c");
 const eventlog = @import("eventlog.zig");
 
 pub const SdlBackend = struct {
@@ -34,16 +34,15 @@ pub const SdlBackend = struct {
     /// The subsystem flags that this backend initialised. `deinit` releases them.
     subsystems: u32 = 0,
     capabilities: platform.Capabilities = .{},
-    counter_base: u64 = 0,
-    counter_freq: u64 = 1,
-    /// `SDL_GetTicks64` at `start`: the origin for the conversion of SDL event time stamps.
-    ticks_base_ms: u64 = 0,
+    /// `SDL_GetTicksNS` at `start`: the origin of `now_ns` and of the events' time stamps, which
+    /// SDL gives in the same clock.
+    ticks_base_ns: u64 = 0,
     last_event_ns: u64 = 0,
 
-    window: ?*c.Window = null,
+    window: ?*c.SDL_Window = null,
     keyboard_focused: bool = false,
-    renderer: ?*c.Renderer = null,
-    texture: ?*c.Texture = null,
+    renderer: ?*c.SDL_Renderer = null,
+    texture: ?*c.SDL_Texture = null,
     resolution: ?platform.Size = null,
     /// The window size that the backend last requested. A different actual size means that the
     /// user resized the window; a later mode change then keeps the user's size.
@@ -75,22 +74,26 @@ pub const SdlBackend = struct {
     scale_text: [32]u8 = @splat(0),
     scale_text_len: usize = 0,
     /// The remainder of the division from device counts to mickeys, one per axis, in device
-    /// counts times the scale numerator (see `pageMotion`).
-    motion_residue_x: i64 = 0,
-    motion_residue_y: i64 = 0,
+    /// counts times the scale numerator (see `pageMotion`). SDL reports fractional counts.
+    motion_residue_x: f64 = 0,
+    motion_residue_y: f64 = 0,
+    /// The wheel's fractional steps not yet reported, one per axis.
+    wheel_residue_x: f32 = 0,
+    wheel_residue_y: f32 = 0,
     renderer_name_buf: [32]u8 = @splat(0),
     renderer_name_len: usize = 0,
-    controllers: std.ArrayList(*c.GameController) = .empty,
+    controllers: std.ArrayList(*c.SDL_Gamepad) = .empty,
 
     audio: Audio = .{},
 
     pub const Audio = struct {
-        device: c.AudioDeviceID = 0,
+        /// The stream to the default playback device, which SDL opens and closes with it.
+        stream: ?*c.SDL_AudioStream = null,
         format: platform.AudioFormat = .{},
         bytes_per_frame: u32 = 0,
         capacity_frames: u64 = 0,
         /// All frames that `audio_queue` accepted. `played` is computed from this count and
-        /// SDL's queue size.
+        /// the stream's queue size.
         accepted_frames: u64 = 0,
         /// The frames that `audio_clear` discarded. They are never reported as played.
         discarded_frames: u64 = 0,
@@ -123,7 +126,7 @@ pub const SdlBackend = struct {
     /// acquired, then frees the Zig-owned state. Valid after a failed `start` or without one.
     pub fn deinit(self: *SdlBackend) void {
         self.closeAudio();
-        for (self.controllers.items) |handle| c.SDL_GameControllerClose(handle);
+        for (self.controllers.items) |handle| c.SDL_CloseGamepad(handle);
         self.controllers.deinit(self.allocator);
         self.destroyPresentation();
         if (self.subsystems != 0) c.SDL_QuitSubSystem(self.subsystems);
@@ -157,7 +160,7 @@ pub const SdlBackend = struct {
     // --- lifecycle ---------------------------------------------------------------------------
 
     fn initSubsystem(self: *SdlBackend, flags: u32) bool {
-        if (c.SDL_InitSubSystem(flags) != 0) {
+        if (!c.SDL_InitSubSystem(flags)) {
             std.log.warn("SDL subsystem 0x{x} unavailable: {s}", .{ flags, c.SDL_GetError() });
             return false;
         }
@@ -165,46 +168,30 @@ pub const SdlBackend = struct {
         return true;
     }
 
-    /// Timer, events and video are required. If the audio or controller subsystem fails, the
-    /// capability is reported as absent. A failed attempt releases the subsystems that it
-    /// acquired, so a later `start` begins from the state after `init`.
+    /// Events and video are required. If the audio or gamepad subsystem fails, the capability is
+    /// reported as absent. A failed attempt releases the subsystems that it acquired, so a later
+    /// `start` begins from the state after `init`. SDL3 declares itself DPI-aware on Windows.
     fn start(ctx: *anyopaque) platform.PlatformError!platform.Capabilities {
         const self = cast(ctx);
         if (self.started) return self.capabilities;
-        _ = c.SDL_SetHint(c.HINT_RENDER_SCALE_QUALITY, "0");
-        // Windows stretches the window of a program that does not declare that it knows the
-        // display's DPI: on a display scaled to 150%, every pixel of the frame is 1.5 pixels
-        // wide. SDL declares it when video starts, and then sizes the window in the display's
-        // own pixels, which the window scale divides exactly.
-        if (builtin.os.tag == .windows) _ = c.SDL_SetHint(c.HINT_WINDOWS_DPI_AWARENESS, "permonitorv2");
         const held = self.subsystems;
         errdefer {
             const acquired = self.subsystems & ~held;
             if (acquired != 0) c.SDL_QuitSubSystem(acquired);
             self.subsystems = held;
         }
-        if (!self.initSubsystem(c.INIT_TIMER | c.INIT_EVENTS)) return error.DeviceFailure;
-        if (!self.initSubsystem(c.INIT_VIDEO)) return error.DeviceFailure;
-        const audio = self.initSubsystem(c.INIT_AUDIO);
-        const controllers = self.initSubsystem(c.INIT_GAMECONTROLLER);
-        self.counter_freq = @max(c.SDL_GetPerformanceFrequency(), 1);
-        self.counter_base = c.SDL_GetPerformanceCounter();
-        self.ticks_base_ms = c.SDL_GetTicks64();
+        if (!self.initSubsystem(c.SDL_INIT_EVENTS)) return error.DeviceFailure;
+        if (!self.initSubsystem(c.SDL_INIT_VIDEO)) return error.DeviceFailure;
+        const audio = self.initSubsystem(c.SDL_INIT_AUDIO);
+        const controllers = self.initSubsystem(c.SDL_INIT_GAMEPAD);
+        self.ticks_base_ns = c.SDL_GetTicksNS();
         self.last_event_ns = 0;
-        c.SDL_StartTextInput();
         self.started = true;
         self.capabilities = .{ .video = true, .audio = audio, .controllers = controllers };
         return self.capabilities;
     }
 
     // --- time --------------------------------------------------------------------------------
-
-    /// Converts counter ticks to nanoseconds, with no overflow for frequencies up to 1 GHz.
-    pub fn counterToNs(delta: u64, freq: u64) u64 {
-        const whole = delta / freq;
-        const rest = delta % freq;
-        return whole * std.time.ns_per_s + rest * std.time.ns_per_s / freq;
-    }
 
     fn nowNs(ctx: *anyopaque) u64 {
         const self = cast(ctx);
@@ -213,20 +200,14 @@ pub const SdlBackend = struct {
 
     fn elapsedNs(self: *const SdlBackend) u64 {
         if (!self.started) return 0;
-        const delta = c.SDL_GetPerformanceCounter() -| self.counter_base;
-        return counterToNs(delta, self.counter_freq);
+        return c.SDL_GetTicksNS() -| self.ticks_base_ns;
     }
 
-    /// Converts an SDL event time stamp (milliseconds, 32-bit, `SDL_GetTicks` domain) into the
-    /// `now_ns` domain. The result is never later than now and never earlier than the previous
-    /// event, so the delivery order and the time stamps agree.
-    fn eventTimeNs(self: *SdlBackend, timestamp_ms: u32) u64 {
-        const now = self.elapsedNs();
-        const now_ms = c.SDL_GetTicks64();
-        const age_ms: u32 = @as(u32, @truncate(now_ms)) -% timestamp_ms;
-        const event_ms = now_ms -| age_ms;
-        var t = (event_ms -| self.ticks_base_ms) * std.time.ns_per_ms;
-        if (t > now) t = now;
+    /// Converts an SDL event time stamp (nanoseconds, `SDL_GetTicksNS` clock) into the `now_ns`
+    /// domain. The result is never later than now and never earlier than the previous event, so
+    /// the delivery order and the time stamps agree.
+    fn eventTimeNs(self: *SdlBackend, timestamp_ns: u64) u64 {
+        const t = @min(timestamp_ns -| self.ticks_base_ns, self.elapsedNs());
         return self.orderedTime(t);
     }
 
@@ -248,8 +229,11 @@ pub const SdlBackend = struct {
         return .{ .width = width * s, .height = height * s };
     }
 
+    /// A rectangle in output pixels.
+    pub const Rect = struct { x: i32, y: i32, w: i32, h: i32 };
+
     /// The largest rectangle with the aspect ratio of the frame that fits the output, centred.
-    pub fn fitRect(out_w: i32, out_h: i32, width: u32, height: u32) c.Rect {
+    pub fn fitRect(out_w: i32, out_h: i32, width: u32, height: u32) Rect {
         if (out_w <= 0 or out_h <= 0 or width == 0 or height == 0) return .{ .x = 0, .y = 0, .w = 0, .h = 0 };
         const ow: i64 = out_w;
         const oh: i64 = out_h;
@@ -271,7 +255,7 @@ pub const SdlBackend = struct {
     }
 
     /// The rectangle of the page in the window, where `present` blits the frame.
-    fn presentRect(self: *SdlBackend) ?struct { rect: c.Rect, page: platform.Size } {
+    fn presentRect(self: *SdlBackend) ?struct { rect: Rect, page: platform.Size } {
         const res = self.resolution orelse return null;
         const out = self.outputSize() orelse return null;
         const rect = fitRect(
@@ -284,25 +268,28 @@ pub const SdlBackend = struct {
         return .{ .rect = rect, .page = res };
     }
 
-    /// One pointer motion, converted from device counts to mickeys by the `--mouse-scale`
-    /// fraction. The game reads the result as the counts of a DOS mouse driver.
+    /// One pointer motion, converted from device counts to the game's counts by the
+    /// `--mouse-scale` fraction.
     ///
     /// The window scale does not apply: a relative delta is not a window measurement. Each axis
     /// keeps its remainder, so a slow drag does not round to zero.
-    fn pageMotion(self: *SdlBackend, dx: i32, dy: i32) struct { dx: i32, dy: i32 } {
-        if (self.mouse_scale_den == 0) return .{ .dx = dx, .dy = dy };
-        self.motion_residue_x += @as(i64, dx) * self.mouse_scale_num;
-        self.motion_residue_y += @as(i64, dy) * self.mouse_scale_num;
-        const step_x = @divTrunc(self.motion_residue_x, self.mouse_scale_den);
-        const step_y = @divTrunc(self.motion_residue_y, self.mouse_scale_den);
-        self.motion_residue_x -= step_x * self.mouse_scale_den;
-        self.motion_residue_y -= step_y * self.mouse_scale_den;
-        return .{ .dx = @intCast(step_x), .dy = @intCast(step_y) };
+    fn pageMotion(self: *SdlBackend, dx: f32, dy: f32) struct { dx: i32, dy: i32 } {
+        const num: f64 = @floatFromInt(self.mouse_scale_num);
+        const den: f64 = @floatFromInt(self.mouse_scale_den);
+        self.motion_residue_x += @as(f64, dx) * num;
+        self.motion_residue_y += @as(f64, dy) * num;
+        const step_x = @trunc(self.motion_residue_x / den);
+        const step_y = @trunc(self.motion_residue_y / den);
+        self.motion_residue_x -= step_x * den;
+        self.motion_residue_y -= step_y * den;
+        return .{ .dx = @intFromFloat(step_x), .dy = @intFromFloat(step_y) };
     }
 
     /// One pointer position in page pixels: the window point minus the offset of the blit,
     /// scaled. Outside the blit, the position is clamped to the page, where the pointer is drawn.
-    fn pagePoint(self: *SdlBackend, x: i32, y: i32) struct { x: i32, y: i32 } {
+    fn pagePoint(self: *SdlBackend, fx: f32, fy: f32) struct { x: i32, y: i32 } {
+        const x: i32 = @intFromFloat(@floor(fx));
+        const y: i32 = @intFromFloat(@floor(fy));
         const found = self.presentRect() orelse return .{ .x = x, .y = y };
         const page_x = @divTrunc(@as(i64, x - found.rect.x) * @as(i64, found.page.width), found.rect.w);
         const page_y = @divTrunc(@as(i64, y - found.rect.y) * @as(i64, found.page.height), found.rect.h);
@@ -338,9 +325,9 @@ pub const SdlBackend = struct {
 
     /// The usable area of the display that shows the window, if SDL can report it.
     fn displayBounds(self: *const SdlBackend) ?platform.Size {
-        const index = if (self.window) |w| @max(c.SDL_GetWindowDisplayIndex(w), 0) else 0;
-        var rect: c.Rect = undefined;
-        if (c.SDL_GetDisplayUsableBounds(index, &rect) != 0 or rect.w <= 0 or rect.h <= 0) return null;
+        const display = if (self.window) |w| c.SDL_GetDisplayForWindow(w) else c.SDL_GetPrimaryDisplay();
+        var rect: c.SDL_Rect = undefined;
+        if (!c.SDL_GetDisplayUsableBounds(display, &rect) or rect.w <= 0 or rect.h <= 0) return null;
         return .{ .width = @intCast(rect.w), .height = @intCast(rect.h) };
     }
 
@@ -351,18 +338,18 @@ pub const SdlBackend = struct {
         const window = self.window orelse return;
         var w: c_int = 0;
         var h: c_int = 0;
-        c.SDL_GetWindowSize(window, &w, &h);
-        if (w < 0 or h < 0) return;
+        if (!c.SDL_GetWindowSize(window, &w, &h) or w < 0 or h < 0) return;
         if (@as(u32, @intCast(w)) != self.window_size.width or @as(u32, @intCast(h)) != self.window_size.height) return;
         const size = fitWindowSize(width, height, self.options.initial_window_scale, self.displayBounds());
-        c.SDL_SetWindowSize(window, @intCast(size.width), @intCast(size.height));
+        _ = c.SDL_SetWindowSize(window, @intCast(size.width), @intCast(size.height));
         self.window_size = size;
     }
 
     fn createPresentation(self: *SdlBackend, width: u32, height: u32) platform.PlatformError!void {
         const size = fitWindowSize(width, height, self.options.initial_window_scale, self.displayBounds());
-        const flags = c.WINDOW_SHOWN | c.WINDOW_RESIZABLE | c.WINDOW_ALLOW_HIGHDPI;
-        const window = c.SDL_CreateWindow(self.title.ptr, c.WINDOWPOS_CENTERED, c.WINDOWPOS_CENTERED, @intCast(size.width), @intCast(size.height), flags) orelse {
+        // The window is sized in the display's pixels, which the window scale divides exactly.
+        const flags = c.SDL_WINDOW_RESIZABLE | c.SDL_WINDOW_HIGH_PIXEL_DENSITY;
+        const window = c.SDL_CreateWindow(self.title.ptr, @intCast(size.width), @intCast(size.height), flags) orelse {
             std.log.err("SDL_CreateWindow failed: {s}", .{c.SDL_GetError()});
             return error.DeviceFailure;
         };
@@ -374,61 +361,61 @@ pub const SdlBackend = struct {
         errdefer c.SDL_DestroyRenderer(created.renderer);
         self.recordRendererInfo(created);
         const texture = self.createTexture(created.renderer, width, height) orelse return error.DeviceFailure;
+        // Text input is per window in SDL3; the game reads it on any screen that takes text.
+        _ = c.SDL_StartTextInput(window);
         self.window = window;
         self.renderer = created.renderer;
         self.texture = texture;
         self.window_size = size;
     }
 
-    const CreatedRenderer = struct { renderer: *c.Renderer, asked_vsync: bool };
+    const CreatedRenderer = struct { renderer: *c.SDL_Renderer, asked_vsync: bool };
 
-    fn createRenderer(self: *const SdlBackend, window: *c.Window) ?CreatedRenderer {
-        if (self.force_software_renderer) {
-            const r = c.SDL_CreateRenderer(window, -1, c.RENDERER_SOFTWARE) orelse return null;
-            return .{ .renderer = r, .asked_vsync = false };
-        }
-        if (self.options.prefer_vsync) {
-            if (c.SDL_CreateRenderer(window, -1, c.RENDERER_ACCELERATED | c.RENDERER_PRESENTVSYNC)) |r| {
-                return .{ .renderer = r, .asked_vsync = true };
-            }
-        }
-        if (c.SDL_CreateRenderer(window, -1, c.RENDERER_ACCELERATED)) |r| return .{ .renderer = r, .asked_vsync = false };
-        const r = c.SDL_CreateRenderer(window, -1, c.RENDERER_SOFTWARE) orelse return null;
-        return .{ .renderer = r, .asked_vsync = false };
+    fn createRenderer(self: *const SdlBackend, window: *c.SDL_Window) ?CreatedRenderer {
+        const r = c.SDL_CreateRenderer(window, if (self.force_software_renderer) "software" else null) orelse {
+            if (self.force_software_renderer) return null;
+            const soft = c.SDL_CreateRenderer(window, "software") orelse return null;
+            return .{ .renderer = soft, .asked_vsync = false };
+        };
+        const asked = !self.force_software_renderer and self.options.prefer_vsync and c.SDL_SetRenderVSync(r, 1);
+        return .{ .renderer = r, .asked_vsync = asked };
     }
 
-    /// SDL's software driver sets `PRESENTVSYNC` in its renderer info, also when the flag was not
-    /// requested, and its `SDL_RenderPresent` does not wait for the display. Thus the flag alone
-    /// does not prove display pacing. Only an accelerated renderer that this backend created with
-    /// the flag counts as paced.
+    /// The software renderer's present does not wait for the display, whatever it reports, so
+    /// only an accelerated renderer that accepted vsync counts as paced.
     fn recordRendererInfo(self: *SdlBackend, created: CreatedRenderer) void {
-        var info: c.RendererInfo = undefined;
-        if (c.SDL_GetRendererInfo(created.renderer, &info) != 0) return;
-        self.software = info.flags & c.RENDERER_SOFTWARE != 0;
-        self.vsync = created.asked_vsync and !self.software and info.flags & c.RENDERER_PRESENTVSYNC != 0;
-        // The SDL driver in use, for the host's start-up line: "opengl", "software",
-        // "opengles2" and others. A window that never paints is almost always a driver problem,
-        // and only this code knows the driver.
-        const text = std.mem.sliceTo(info.name, 0);
+        const name = c.SDL_GetRendererName(created.renderer) orelse return;
+        const text = std.mem.sliceTo(name, 0);
+        self.software = std.mem.eql(u8, text, "software");
+        var vsync: c_int = 0;
+        self.vsync = created.asked_vsync and !self.software and c.SDL_GetRenderVSync(created.renderer, &vsync) and vsync != 0;
+        // The SDL driver in use, for the host's start-up line: "opengl", "software", "vulkan"
+        // and others. A window that never paints is almost always a driver problem, and only
+        // this code knows the driver.
         const n = @min(text.len, self.renderer_name_buf.len);
         @memcpy(self.renderer_name_buf[0..n], text[0..n]);
         self.renderer_name_len = n;
     }
 
-    /// The name of the driver, as `SDL_GetRendererInfo` reports it.
+    /// The name of the driver, as `SDL_GetRendererName` reports it.
     pub fn rendererName(self: *const SdlBackend) []const u8 {
         return self.renderer_name_buf[0..self.renderer_name_len];
     }
 
-    fn createTexture(self: *SdlBackend, renderer: *c.Renderer, width: u32, height: u32) ?*c.Texture {
+    fn createTexture(self: *SdlBackend, renderer: *c.SDL_Renderer, width: u32, height: u32) ?*c.SDL_Texture {
         if (self.fail_next_texture) {
             self.fail_next_texture = false;
             return null;
         }
-        return c.SDL_CreateTexture(renderer, c.PIXELFORMAT_RGBA32, c.TEXTUREACCESS_STREAMING, @intCast(width), @intCast(height)) orelse {
+        const texture: *c.SDL_Texture = c.SDL_CreateTexture(renderer, c.SDL_PIXELFORMAT_RGBA32, c.SDL_TEXTUREACCESS_STREAMING, @intCast(width), @intCast(height)) orelse {
             std.log.err("SDL_CreateTexture({d}x{d}) failed: {s}", .{ width, height, c.SDL_GetError() });
             return null;
         };
+        // Whole pixels when the frame is scaled up: the original's pixels stay sharp. The frame is
+        // copied as it is: SDL3 blends a texture with an alpha channel by default.
+        _ = c.SDL_SetTextureScaleMode(texture, c.SDL_SCALEMODE_NEAREST);
+        _ = c.SDL_SetTextureBlendMode(texture, c.SDL_BLENDMODE_NONE);
+        return texture;
     }
 
     fn destroyPresentation(self: *SdlBackend) void {
@@ -447,7 +434,7 @@ pub const SdlBackend = struct {
         const renderer = self.renderer orelse return null;
         var w: c_int = 0;
         var h: c_int = 0;
-        if (c.SDL_GetRendererOutputSize(renderer, &w, &h) != 0 or w < 0 or h < 0) return null;
+        if (!c.SDL_GetCurrentRenderOutputSize(renderer, &w, &h) or w < 0 or h < 0) return null;
         return .{ .width = @intCast(w), .height = @intCast(h) };
     }
 
@@ -461,13 +448,14 @@ pub const SdlBackend = struct {
         const renderer = self.renderer orelse return error.InvalidResolution;
         const texture = self.texture orelse return error.InvalidResolution;
         // SDL copies the rows into the texture. The backend keeps no reference to the buffer.
-        if (c.SDL_UpdateTexture(texture, null, frame.pixels.ptr, pitch) != 0) return error.DeviceFailure;
+        if (!c.SDL_UpdateTexture(texture, null, frame.pixels.ptr, pitch)) return error.DeviceFailure;
         const out = self.outputSize() orelse platform.Size{ .width = res.width, .height = res.height };
-        const dst = fitRect(@intCast(@min(out.width, std.math.maxInt(i32))), @intCast(@min(out.height, std.math.maxInt(i32))), res.width, res.height);
+        const r = fitRect(@intCast(@min(out.width, std.math.maxInt(i32))), @intCast(@min(out.height, std.math.maxInt(i32))), res.width, res.height);
+        const dst: c.SDL_FRect = .{ .x = @floatFromInt(r.x), .y = @floatFromInt(r.y), .w = @floatFromInt(r.w), .h = @floatFromInt(r.h) };
         _ = c.SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         _ = c.SDL_RenderClear(renderer);
-        if (c.SDL_RenderCopy(renderer, texture, null, &dst) != 0) return error.DeviceFailure;
-        c.SDL_RenderPresent(renderer);
+        if (!c.SDL_RenderTexture(renderer, texture, null, &dst)) return error.DeviceFailure;
+        _ = c.SDL_RenderPresent(renderer);
         self.frames_presented += 1;
     }
 
@@ -494,8 +482,8 @@ pub const SdlBackend = struct {
             self.pending_next = 0;
         }
         if (!self.started) return n;
-        var ev: c.Event = undefined;
-        while (n < dst.len and c.SDL_PollEvent(&ev) != 0) {
+        var ev: c.SDL_Event = undefined;
+        while (n < dst.len and c.SDL_PollEvent(&ev)) {
             var out: [max_events_per_sdl_event]platform.Event = undefined;
             const count = self.translate(&ev, &out);
             for (out[0..count]) |e| {
@@ -513,33 +501,30 @@ pub const SdlBackend = struct {
 
     /// Translates one SDL event into zero or more project events. A text input can split into
     /// several events. `out` needs room for `max_events_per_sdl_event` events.
-    fn translate(self: *SdlBackend, ev: *const c.Event, out: []platform.Event) usize {
+    fn translate(self: *SdlBackend, ev: *const c.SDL_Event, out: []platform.Event) usize {
         const payload: platform.Event.Payload = switch (ev.type) {
-            c.QUIT => .quit,
-            c.WINDOWEVENT => switch (ev.window.event) {
-                c.WINDOWEVENT_FOCUS_GAINED => blk2: {
-                    self.keyboard_focused = true;
-                    break :blk2 .focus_gained;
-                },
-                c.WINDOWEVENT_FOCUS_LOST => blk2: {
-                    const was_focused = self.keyboard_focused;
-                    self.keyboard_focused = false;
-                    // The pointer goes back to the desktop with the focus.
-                    self.setCapture(false);
-                    if (!was_focused) return 0;
-                    break :blk2 .focus_lost;
-                },
-                c.WINDOWEVENT_SIZE_CHANGED => .{ .drawable_resized = self.outputSize() orelse .{
-                    .width = @intCast(@max(ev.window.data1, 0)),
-                    .height = @intCast(@max(ev.window.data2, 0)),
-                } },
-                else => return 0,
+            c.SDL_EVENT_QUIT => .quit,
+            c.SDL_EVENT_WINDOW_FOCUS_GAINED => blk: {
+                self.keyboard_focused = true;
+                break :blk .focus_gained;
             },
-            c.KEYDOWN, c.KEYUP => blk: {
-                // SDL releases held keys before it queues WINDOWEVENT_FOCUS_LOST. Report the
-                // loss first, so these synthetic releases cannot commit a drag or a stroke.
-                // Injected events without a window are kept.
-                if (ev.key.window_id != 0 and self.window != null and
+            c.SDL_EVENT_WINDOW_FOCUS_LOST => blk: {
+                const was_focused = self.keyboard_focused;
+                self.keyboard_focused = false;
+                // The pointer goes back to the desktop with the focus.
+                self.setCapture(false);
+                if (!was_focused) return 0;
+                break :blk .focus_lost;
+            },
+            c.SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED => .{ .drawable_resized = self.outputSize() orelse .{
+                .width = @intCast(@max(ev.window.data1, 0)),
+                .height = @intCast(@max(ev.window.data2, 0)),
+            } },
+            c.SDL_EVENT_KEY_DOWN, c.SDL_EVENT_KEY_UP => blk: {
+                // SDL releases held keys before it queues the focus loss. Report the loss first, so
+                // these synthetic releases cannot commit a drag or a stroke. Injected events
+                // without a window are kept.
+                if (ev.key.windowID != 0 and self.window != null and
                     (!self.keyboard_focused or c.SDL_GetKeyboardFocus() != self.window))
                 {
                     if (!self.keyboard_focused) return 0;
@@ -548,56 +533,67 @@ pub const SdlBackend = struct {
                 }
                 // Ctrl+F10 is the host's chord, and the game never sees it. It moves the pointer
                 // between the desktop and the game.
-                if (keyFromScancode(ev.key.keysym.scancode) == .f10 and (ev.key.keysym.mod & c.KMOD_CTRL) != 0) {
-                    if (ev.type == c.KEYDOWN) self.setCapture(!self.captured);
+                if (keyFromScancode(ev.key.scancode) == .f10 and (ev.key.mod & c.SDL_KMOD_CTRL) != 0) {
+                    if (ev.key.down) self.setCapture(!self.captured);
                     return 0;
                 }
-                const key: platform.Event.KeyEvent = .{ .key = keyFromScancode(ev.key.keysym.scancode), .repeat = ev.key.repeat != 0 };
-                break :blk if (ev.type == c.KEYDOWN) .{ .key_down = key } else .{ .key_up = key };
+                const key: platform.Event.KeyEvent = .{ .key = keyFromScancode(ev.key.scancode), .repeat = ev.key.repeat };
+                break :blk if (ev.key.down) .{ .key_down = key } else .{ .key_up = key };
             },
-            c.TEXTINPUT => {
+            c.SDL_EVENT_TEXT_INPUT => {
                 const t = self.eventTimeNs(ev.common.timestamp);
-                return splitText(std.mem.sliceTo(&ev.text.text, 0), t, out);
+                const text = ev.text.text orelse return 0;
+                return splitText(std.mem.sliceTo(text, 0), t, out);
             },
-            c.MOUSEMOTION => blk: {
+            c.SDL_EVENT_MOUSE_MOTION => blk: {
                 if (self.relative_wanted and !self.captured) return 0;
                 const motion = self.pageMotion(ev.motion.xrel, ev.motion.yrel);
                 const at = self.pagePoint(ev.motion.x, ev.motion.y);
                 break :blk .{ .mouse_motion = .{ .dx = motion.dx, .dy = motion.dy, .x = at.x, .y = at.y } };
             },
-            c.MOUSEBUTTONDOWN, c.MOUSEBUTTONUP => blk: {
+            c.SDL_EVENT_MOUSE_BUTTON_DOWN, c.SDL_EVENT_MOUSE_BUTTON_UP => blk: {
                 // A click while the desktop has the pointer captures the pointer. The game does
                 // not get this click.
-                if (self.swallow_button_up and ev.type == c.MOUSEBUTTONUP) {
+                if (self.swallow_button_up and !ev.button.down) {
                     self.swallow_button_up = false;
                     return 0;
                 }
-                if (!self.captured and self.relative_wanted and ev.type == c.MOUSEBUTTONDOWN) {
+                if (!self.captured and self.relative_wanted and ev.button.down) {
                     self.setCapture(true);
                     self.swallow_button_up = true;
                     return 0;
                 }
                 const at = self.pagePoint(ev.button.x, ev.button.y);
                 const button: platform.Event.MouseButtonEvent = .{ .button = mouseButton(ev.button.button), .x = at.x, .y = at.y };
-                break :blk if (ev.type == c.MOUSEBUTTONDOWN) .{ .mouse_button_down = button } else .{ .mouse_button_up = button };
+                break :blk if (ev.button.down) .{ .mouse_button_down = button } else .{ .mouse_button_up = button };
             },
-            c.MOUSEWHEEL => blk: {
-                const sign: i32 = if (ev.wheel.direction == c.MOUSEWHEEL_FLIPPED) -1 else 1;
-                break :blk .{ .mouse_wheel = .{ .dx = ev.wheel.x * sign, .dy = ev.wheel.y * sign } };
+            c.SDL_EVENT_MOUSE_WHEEL => blk: {
+                // SDL reports fractions of a step (smooth scrolling); the game gets whole steps.
+                const sign: f32 = if (ev.wheel.direction == c.SDL_MOUSEWHEEL_FLIPPED) -1 else 1;
+                self.wheel_residue_x += ev.wheel.x * sign;
+                self.wheel_residue_y += ev.wheel.y * sign;
+                const dx = @trunc(self.wheel_residue_x);
+                const dy = @trunc(self.wheel_residue_y);
+                self.wheel_residue_x -= dx;
+                self.wheel_residue_y -= dy;
+                if (dx == 0 and dy == 0) return 0;
+                break :blk .{ .mouse_wheel = .{ .dx = @intFromFloat(dx), .dy = @intFromFloat(dy) } };
             },
-            c.CONTROLLERDEVICEADDED => blk: {
-                const id = self.openController(ev.cdevice.which) orelse return 0;
+            c.SDL_EVENT_GAMEPAD_ADDED => blk: {
+                const id = self.openController(ev.gdevice.which) orelse return 0;
                 break :blk .{ .controller_added = id };
             },
-            c.CONTROLLERDEVICEREMOVED => blk: {
-                self.closeController(ev.cdevice.which);
-                break :blk .{ .controller_removed = controllerId(ev.cdevice.which) };
+            c.SDL_EVENT_GAMEPAD_REMOVED => blk: {
+                self.closeController(ev.gdevice.which);
+                break :blk .{ .controller_removed = controllerId(ev.gdevice.which) };
             },
-            c.CONTROLLERBUTTONDOWN, c.CONTROLLERBUTTONUP => blk: {
-                const button: platform.Event.ControllerButtonEvent = .{ .controller = controllerId(ev.cbutton.which), .button = @fromBackingInt(ev.cbutton.button) };
-                break :blk if (ev.type == c.CONTROLLERBUTTONDOWN) .{ .controller_button_down = button } else .{ .controller_button_up = button };
+            c.SDL_EVENT_GAMEPAD_BUTTON_DOWN, c.SDL_EVENT_GAMEPAD_BUTTON_UP => blk: {
+                // The project's buttons are SDL's first fifteen; the others are not mapped.
+                if (ev.gbutton.button >= @typeInfo(platform.ControllerButton).@"enum".field_names.len) return 0;
+                const button: platform.Event.ControllerButtonEvent = .{ .controller = controllerId(ev.gbutton.which), .button = @fromBackingInt(ev.gbutton.button) };
+                break :blk if (ev.gbutton.down) .{ .controller_button_down = button } else .{ .controller_button_up = button };
             },
-            c.CONTROLLERAXISMOTION => .{ .controller_axis = .{ .controller = controllerId(ev.caxis.which), .axis = @fromBackingInt(ev.caxis.axis), .value = ev.caxis.value } },
+            c.SDL_EVENT_GAMEPAD_AXIS_MOTION => .{ .controller_axis = .{ .controller = controllerId(ev.gaxis.which), .axis = @fromBackingInt(ev.gaxis.axis), .value = ev.gaxis.value } },
             else => return 0,
         };
         out[0] = .{ .time_ns = self.eventTimeNs(ev.common.timestamp), .payload = payload };
@@ -625,31 +621,26 @@ pub const SdlBackend = struct {
         return count;
     }
 
-    fn controllerId(instance: c.JoystickID) platform.ControllerId {
-        return @fromBackingInt(@as(u32, @bitCast(instance)));
+    fn controllerId(instance: c.SDL_JoystickID) platform.ControllerId {
+        return @fromBackingInt(@as(u32, instance));
     }
 
-    /// Opens the controller at a device index and returns its instance id.
-    fn openController(self: *SdlBackend, device_index: i32) ?platform.ControllerId {
-        const handle = c.SDL_GameControllerOpen(device_index) orelse return null;
-        const joystick = c.SDL_GameControllerGetJoystick(handle) orelse {
-            c.SDL_GameControllerClose(handle);
-            return null;
-        };
-        const instance = c.SDL_JoystickInstanceID(joystick);
+    /// Opens the gamepad of an instance id, which SDL3 gives in the event itself.
+    fn openController(self: *SdlBackend, instance: c.SDL_JoystickID) ?platform.ControllerId {
+        const handle = c.SDL_OpenGamepad(instance) orelse return null;
         self.controllers.append(self.allocator, handle) catch {
-            c.SDL_GameControllerClose(handle);
+            c.SDL_CloseGamepad(handle);
             return null;
         };
         return controllerId(instance);
     }
 
-    fn closeController(self: *SdlBackend, instance: c.JoystickID) void {
-        const handle = c.SDL_GameControllerFromInstanceID(instance) orelse return;
+    fn closeController(self: *SdlBackend, instance: c.SDL_JoystickID) void {
+        const handle = c.SDL_GetGamepadFromID(instance) orelse return;
         for (self.controllers.items, 0..) |h, i| {
             if (h == handle) {
                 _ = self.controllers.swapRemove(i);
-                c.SDL_GameControllerClose(handle);
+                c.SDL_CloseGamepad(handle);
                 return;
             }
         }
@@ -663,79 +654,65 @@ pub const SdlBackend = struct {
         if (!self.capabilities.audio) return error.Unsupported;
         if (requested.channels == 0 or requested.sample_rate == 0 or requested.sample_rate > std.math.maxInt(c_int)) return error.Unsupported;
         self.closeAudio();
-        const desired: c.AudioSpec = .{
-            .freq = @intCast(requested.sample_rate),
-            .format = c.AUDIO_S16,
-            .channels = requested.channels,
-            .silence = 0,
-            .samples = 1024,
-            .padding = 0,
-            .size = 0,
-            .callback = null,
-            .userdata = null,
-        };
-        var obtained: c.AudioSpec = undefined;
-        const device = c.SDL_OpenAudioDevice(null, 0, &desired, &obtained, c.AUDIO_ALLOW_FREQUENCY_CHANGE | c.AUDIO_ALLOW_CHANNELS_CHANGE);
-        if (device == 0) {
-            std.log.err("SDL_OpenAudioDevice failed: {s}", .{c.SDL_GetError()});
+        // The stream takes the game's format as it is and converts it for the device, so the
+        // format obtained is the one requested.
+        const spec: c.SDL_AudioSpec = .{ .format = c.SDL_AUDIO_S16, .channels = requested.channels, .freq = @intCast(requested.sample_rate) };
+        const stream = c.SDL_OpenAudioDeviceStream(c.SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, null, null) orelse {
+            std.log.err("SDL_OpenAudioDeviceStream failed: {s}", .{c.SDL_GetError()});
             return error.DeviceFailure;
-        }
-        if (obtained.format != c.AUDIO_S16 or obtained.channels == 0 or obtained.freq <= 0) {
-            c.SDL_CloseAudioDevice(device);
-            return error.Unsupported;
-        }
-        const format: platform.AudioFormat = .{ .channels = obtained.channels, .sample_rate = @intCast(obtained.freq) };
+        };
+        const format: platform.AudioFormat = .{ .channels = requested.channels, .sample_rate = requested.sample_rate };
         self.audio = .{
-            .device = device,
+            .stream = stream,
             .format = format,
-            .bytes_per_frame = @as(u32, obtained.channels) * @sizeOf(i16),
+            .bytes_per_frame = @as(u32, requested.channels) * @sizeOf(i16),
             .capacity_frames = if (self.audio_capacity_frames != 0) self.audio_capacity_frames else format.sample_rate,
         };
-        c.SDL_PauseAudioDevice(device, 0);
+        _ = c.SDL_ResumeAudioStreamDevice(stream);
         return format;
     }
 
     fn queuedFrames(self: *const SdlBackend) u64 {
-        if (self.audio.device == 0) return 0;
-        return c.SDL_GetQueuedAudioSize(self.audio.device) / self.audio.bytes_per_frame;
+        const stream = self.audio.stream orelse return 0;
+        return @as(u64, @intCast(@max(c.SDL_GetAudioStreamQueued(stream), 0))) / self.audio.bytes_per_frame;
     }
 
     fn audioQueue(ctx: *anyopaque, samples: []const i16) platform.PlatformError!usize {
         const self = cast(ctx);
-        if (self.audio.device == 0) return error.DeviceFailure;
+        const stream = self.audio.stream orelse return error.DeviceFailure;
         const channels: usize = self.audio.format.channels;
         const offered = samples.len / channels;
         const room = self.audio.capacity_frames -| self.queuedFrames();
         const accepted: usize = @intCast(@min(offered, room));
         if (accepted == 0) return 0;
-        const bytes: u32 = @intCast(accepted * self.audio.bytes_per_frame);
-        if (c.SDL_QueueAudio(self.audio.device, samples.ptr, bytes) != 0) return error.DeviceFailure;
+        const bytes: c_int = @intCast(accepted * self.audio.bytes_per_frame);
+        if (!c.SDL_PutAudioStreamData(stream, samples.ptr, bytes)) return error.DeviceFailure;
         self.audio.accepted_frames += accepted;
         return accepted;
     }
 
-    /// `played` counts the frames that SDL took from its queue for the device. Discarded frames
-    /// are not counted.
+    /// `played` counts the frames that the device took from the stream. Discarded frames are not
+    /// counted.
     fn audioStatus(ctx: *anyopaque) platform.AudioStatus {
         const self = cast(ctx);
-        if (self.audio.device == 0) return .{};
+        const stream = self.audio.stream orelse return .{};
         const queued = self.queuedFrames();
-        const status = c.SDL_GetAudioDeviceStatus(self.audio.device);
+        const paused = c.SDL_AudioStreamDevicePaused(stream);
         return .{
             .queued_frames = queued,
             .played_frames = self.audio.accepted_frames -| self.audio.discarded_frames -| queued,
-            .running = status == c.AUDIO_PLAYING,
-            .suspended = status != c.AUDIO_PLAYING,
+            .running = !paused,
+            .suspended = paused,
         };
     }
 
     fn audioClear(ctx: *anyopaque) void {
         const self = cast(ctx);
-        if (self.audio.device == 0) return;
-        c.SDL_LockAudioDevice(self.audio.device);
+        const stream = self.audio.stream orelse return;
+        _ = c.SDL_LockAudioStream(stream);
         self.audio.discarded_frames += self.queuedFrames();
-        c.SDL_ClearQueuedAudio(self.audio.device);
-        c.SDL_UnlockAudioDevice(self.audio.device);
+        _ = c.SDL_ClearAudioStream(stream);
+        _ = c.SDL_UnlockAudioStream(stream);
     }
 
     fn audioClose(ctx: *anyopaque) void {
@@ -743,25 +720,34 @@ pub const SdlBackend = struct {
     }
 
     fn closeAudio(self: *SdlBackend) void {
-        if (self.audio.device != 0) c.SDL_CloseAudioDevice(self.audio.device);
+        if (self.audio.stream) |stream| c.SDL_DestroyAudioStream(stream);
         self.audio = .{};
     }
 
     // --- capture -------------------------------------------------------------------------
 
-    /// Requests relative mode. A `capture_changed` event reports the state that SDL really
-    /// reached, also when the request failed.
+    /// Requests relative mode for the window. A `capture_changed` event reports the state that
+    /// SDL really reached, also when the request failed (before the window exists, for one).
     fn setRelativeMouse(ctx: *anyopaque, enabled: bool) platform.PlatformError!void {
         const self = cast(ctx);
         if (!self.started) return error.NotStarted;
         self.relative_wanted = enabled;
-        const rc = c.SDL_SetRelativeMouseMode(if (enabled) c.TRUE else c.FALSE);
-        const actual = c.SDL_GetRelativeMouseMode() == c.TRUE;
-        self.captured = actual;
-        _ = c.SDL_ShowCursor(if (actual) c.CURSOR_DISABLE else c.CURSOR_ENABLE);
+        const ok = self.applyRelative(enabled);
         const t = self.orderedTime(self.elapsedNs());
-        self.pending.append(self.allocator, .{ .time_ns = t, .payload = .{ .capture_changed = actual } }) catch return error.OutOfMemory;
-        if (rc != 0) return error.Unsupported;
+        self.pending.append(self.allocator, .{ .time_ns = t, .payload = .{ .capture_changed = self.captured } }) catch return error.OutOfMemory;
+        if (!ok) return error.Unsupported;
+    }
+
+    /// Sets the window's relative mode and the cursor, and records the state that SDL reached.
+    fn applyRelative(self: *SdlBackend, enabled: bool) bool {
+        const window = self.window orelse {
+            self.captured = false;
+            return !enabled;
+        };
+        const ok = c.SDL_SetWindowRelativeMouseMode(window, enabled);
+        self.captured = c.SDL_GetWindowRelativeMouseMode(window);
+        _ = if (self.captured) c.SDL_HideCursor() else c.SDL_ShowCursor();
+        return ok;
     }
 
     /// The device-count scale, as a fraction. The host sets it from `--mouse-scale`.
@@ -786,9 +772,7 @@ pub const SdlBackend = struct {
     /// `setRelativeMouse` without the `NotStarted` contract, so an event handler can use it.
     fn setCapture(self: *SdlBackend, enabled: bool) void {
         if (!self.started or enabled == self.captured) return;
-        _ = c.SDL_SetRelativeMouseMode(if (enabled) c.TRUE else c.FALSE);
-        self.captured = c.SDL_GetRelativeMouseMode() == c.TRUE;
-        _ = c.SDL_ShowCursor(if (self.captured) c.CURSOR_DISABLE else c.CURSOR_ENABLE);
+        _ = self.applyRelative(enabled);
         const t = self.orderedTime(self.elapsedNs());
         self.pending.append(self.allocator, .{ .time_ns = t, .payload = .{ .capture_changed = self.captured } }) catch {};
         self.motion_residue_x = 0;
@@ -853,13 +837,13 @@ pub fn mouseButton(sdl_button: u8) platform.MouseButton {
 /// Picks SDL's video driver whatever the environment says, on every platform: SDL reads the
 /// driver from its hint, and a hint of override priority wins over the environment variable.
 fn useVideoDriver(name: [*:0]const u8) void {
-    _ = c.SDL_SetHintWithPriority(c.HINT_VIDEODRIVER, name, c.HINT_OVERRIDE);
+    _ = c.SDL_SetHintWithPriority(c.SDL_HINT_VIDEO_DRIVER, name, c.SDL_HINT_OVERRIDE);
 }
 
 /// The tests run without a display or a sound card.
 fn useDummyDrivers() void {
     useVideoDriver("dummy");
-    _ = c.SDL_SetHintWithPriority(c.HINT_AUDIODRIVER, "dummy", c.HINT_OVERRIDE);
+    _ = c.SDL_SetHintWithPriority(c.SDL_HINT_AUDIO_DRIVER, "dummy", c.SDL_HINT_OVERRIDE);
 }
 
 fn startedBackend(scale: u32) !SdlBackend {
@@ -872,7 +856,14 @@ fn startedBackend(scale: u32) !SdlBackend {
 /// Reads the whole output of the renderer as RGBA32 rows of `width * 4` bytes.
 fn readBack(backend: *SdlBackend, dst: []u8, width: u32) !void {
     const renderer = backend.renderer orelse return error.NoRenderer;
-    if (c.SDL_RenderReadPixels(renderer, null, c.PIXELFORMAT_RGBA32, dst.ptr, @intCast(width * 4)) != 0) return error.ReadBackFailed;
+    const read = c.SDL_RenderReadPixels(renderer, null) orelse return error.ReadBackFailed;
+    defer c.SDL_DestroySurface(read);
+    const rgba = c.SDL_ConvertSurface(read, c.SDL_PIXELFORMAT_RGBA32) orelse return error.ReadBackFailed;
+    defer c.SDL_DestroySurface(rgba);
+    const rows: usize = @intCast(rgba.*.h);
+    const pitch: usize = @intCast(rgba.*.pitch);
+    const src: [*]const u8 = @ptrCast(rgba.*.pixels orelse return error.ReadBackFailed);
+    for (0..rows) |y| @memcpy(dst[y * width * 4 ..][0 .. width * 4], src[y * pitch ..][0 .. width * 4]);
 }
 
 fn patternByte(x: u32, y: u32, channel: u32) u8 {
@@ -901,8 +892,8 @@ test "every named key has a scancode" {
     try std.testing.expectEqual(platform.Key.enter, keyFromScancode(88));
     try std.testing.expectEqual(platform.Key.unknown, keyFromScancode(57)); // caps lock
     try std.testing.expectEqual(platform.Key.unknown, keyFromScancode(100_000));
-    try std.testing.expectEqual(platform.MouseButton.left, mouseButton(c.BUTTON_LEFT));
-    try std.testing.expectEqual(platform.MouseButton.x2, mouseButton(c.BUTTON_X2));
+    try std.testing.expectEqual(platform.MouseButton.left, mouseButton(c.SDL_BUTTON_LEFT));
+    try std.testing.expectEqual(platform.MouseButton.x2, mouseButton(c.SDL_BUTTON_X2));
 }
 
 test "fitting: window size and letterbox rectangle" {
@@ -917,12 +908,11 @@ test "fitting: window size and letterbox rectangle" {
     try std.testing.expectEqual(1024 * SdlBackend.max_window_scale, capped.width);
 
     const rect = SdlBackend.fitRect;
-    try std.testing.expectEqual(c.Rect{ .x = 0, .y = 0, .w = 640, .h = 400 }, rect(640, 400, 320, 200));
-    try std.testing.expectEqual(c.Rect{ .x = 0, .y = 100, .w = 640, .h = 400 }, rect(640, 600, 320, 200));
-    try std.testing.expectEqual(c.Rect{ .x = 160, .y = 0, .w = 320, .h = 200 }, rect(640, 200, 320, 200));
-    try std.testing.expectEqual(c.Rect{ .x = 0, .y = 0, .w = 0, .h = 0 }, rect(0, 200, 320, 200));
-    try std.testing.expectEqual(@as(u64, 1_500_000_000), SdlBackend.counterToNs(1500, 1000));
-    try std.testing.expectEqual(@as(u64, 3_000_000_000), SdlBackend.counterToNs(3_000_000_000, 1_000_000_000));
+    const Rect = SdlBackend.Rect;
+    try std.testing.expectEqual(Rect{ .x = 0, .y = 0, .w = 640, .h = 400 }, rect(640, 400, 320, 200));
+    try std.testing.expectEqual(Rect{ .x = 0, .y = 100, .w = 640, .h = 400 }, rect(640, 600, 320, 200));
+    try std.testing.expectEqual(Rect{ .x = 160, .y = 0, .w = 320, .h = 200 }, rect(640, 200, 320, 200));
+    try std.testing.expectEqual(Rect{ .x = 0, .y = 0, .w = 0, .h = 0 }, rect(0, 200, 320, 200));
 }
 
 test "text input splits between code points into 8-byte chunks" {
@@ -956,8 +946,7 @@ test "present honours channel order and stride and retains nothing" {
     try std.testing.expect(caps.video);
     try p.setResolution(8, 6);
     try std.testing.expect(backend.software);
-    // The software renderer sets PRESENTVSYNC but does not wait for a display. The host must not
-    // treat it as paced.
+    // The software renderer does not wait for a display. The host must not treat it as paced.
     try std.testing.expect(!backend.vsync);
     try std.testing.expectEqual(platform.Size{ .width = 8, .height = 6 }, backend.outputSize().?);
 
@@ -1028,7 +1017,7 @@ test "a window the user resized keeps its size and letterboxes the frame" {
     _ = try p.start();
     try p.setResolution(16, 12);
     // A window manager or the user resizes the window without the backend.
-    c.SDL_SetWindowSize(backend.window.?, 40, 40);
+    _ = c.SDL_SetWindowSize(backend.window.?, 40, 40);
     try std.testing.expectEqual(platform.Size{ .width = 40, .height = 40 }, backend.outputSize().?);
 
     try p.setResolution(8, 6);
@@ -1058,7 +1047,7 @@ test "audio: open, bounded queue with partial acceptance, status, clear, close" 
     try std.testing.expectEqual(@as(u8, 2), fmt.channels);
     try std.testing.expectEqual(@as(u32, 8000), fmt.sample_rate);
     // Pause the device, so the dummy driver does not drain the queue during the count.
-    c.SDL_PauseAudioDevice(backend.audio.device, 1);
+    _ = c.SDL_PauseAudioStreamDevice(backend.audio.stream);
     try std.testing.expect(p.audioStatus().suspended);
 
     const samples: [2400]i16 = @splat(0x1234); // 1200 frames offered, 1000 fit
@@ -1077,7 +1066,7 @@ test "audio: open, bounded queue with partial acceptance, status, clear, close" 
     try std.testing.expectEqual(@as(u64, 300), p.audioStatus().queued_frames);
 
     // Let the device run. The frames that it takes are reported as played, never lost.
-    c.SDL_PauseAudioDevice(backend.audio.device, 0);
+    _ = c.SDL_ResumeAudioStreamDevice(backend.audio.stream);
     try std.testing.expect(p.audioStatus().running);
     c.SDL_Delay(50);
     status = p.audioStatus();
@@ -1130,7 +1119,7 @@ test "relative mouse requests report the actual capture state" {
     try std.testing.expectEqual(@as(usize, 1), p.pollEvents(&buf));
     try std.testing.expectEqual(platform.Event.Kind.capture_changed, std.meta.activeTag(buf[0].payload));
     try std.testing.expectEqual(granted, buf[0].payload.capture_changed);
-    try std.testing.expectEqual(c.SDL_GetRelativeMouseMode() == c.TRUE, buf[0].payload.capture_changed);
+    try std.testing.expectEqual(c.SDL_GetWindowRelativeMouseMode(backend.window), buf[0].payload.capture_changed);
     p.setRelativeMouse(false) catch {};
     try std.testing.expectEqual(@as(usize, 1), p.pollEvents(&buf));
     try std.testing.expect(!buf[0].payload.capture_changed);
@@ -1143,82 +1132,117 @@ test "translation: keys, buttons, wheel direction and timestamps" {
     var p = backend.asPlatform();
     _ = try p.start();
     var out: [4]platform.Event = undefined;
-    var ev: c.Event = .{ .raw = @splat(0) };
-    ev.key = .{ .type = c.KEYDOWN, .timestamp = @truncate(c.SDL_GetTicks64()), .window_id = 0, .state = c.PRESSED, .repeat = 1, .padding2 = 0, .padding3 = 0, .keysym = .{ .scancode = 22, .sym = 0, .mod = 0, .unused = 0 } };
+    var ev = std.mem.zeroes(c.SDL_Event);
+    ev.key.type = c.SDL_EVENT_KEY_DOWN;
+    ev.key.timestamp = c.SDL_GetTicksNS();
+    ev.key.scancode = 22;
+    ev.key.down = true;
+    ev.key.repeat = true;
     try std.testing.expectEqual(@as(usize, 1), backend.translate(&ev, &out));
     try std.testing.expectEqual(platform.Key.s, out[0].payload.key_down.key);
     try std.testing.expect(out[0].payload.key_down.repeat);
     try std.testing.expect(out[0].time_ns <= p.nowNs());
 
-    ev.wheel = .{ .type = c.MOUSEWHEEL, .timestamp = 0, .window_id = 0, .which = 0, .x = 0, .y = 1, .direction = c.MOUSEWHEEL_FLIPPED, .precise_x = 0, .precise_y = 1, .mouse_x = 0, .mouse_y = 0 };
+    ev = std.mem.zeroes(c.SDL_Event);
+    ev.wheel.type = c.SDL_EVENT_MOUSE_WHEEL;
+    ev.wheel.y = 1;
+    ev.wheel.direction = c.SDL_MOUSEWHEEL_FLIPPED;
     try std.testing.expectEqual(@as(usize, 1), backend.translate(&ev, &out));
     try std.testing.expectEqual(@as(i32, -1), out[0].payload.mouse_wheel.dy);
-    // A time stamp of 0 ms is before the backend's origin. It is clamped to the time of the
-    // previous event, never earlier, so the delivery order and the time stamps agree.
+    // A half step is kept until the next half makes a whole one.
+    ev.wheel.y = 0.5;
+    ev.wheel.direction = 0;
+    try std.testing.expectEqual(@as(usize, 0), backend.translate(&ev, &out));
+    try std.testing.expectEqual(@as(usize, 1), backend.translate(&ev, &out));
+    try std.testing.expectEqual(@as(i32, 1), out[0].payload.mouse_wheel.dy);
+    // A time stamp of 0 is before the backend's origin. It is clamped to the time of the previous
+    // event, never earlier, so the delivery order and the time stamps agree.
     const first = out[0].time_ns;
 
-    ev.button = .{ .type = c.MOUSEBUTTONUP, .timestamp = @truncate(c.SDL_GetTicks64()), .window_id = 0, .which = 0, .button = c.BUTTON_RIGHT, .state = c.RELEASED, .clicks = 1, .padding1 = 0, .x = 3, .y = 4 };
+    ev = std.mem.zeroes(c.SDL_Event);
+    ev.button.type = c.SDL_EVENT_MOUSE_BUTTON_UP;
+    ev.button.timestamp = c.SDL_GetTicksNS();
+    ev.button.button = c.SDL_BUTTON_RIGHT;
+    ev.button.x = 3;
+    ev.button.y = 4;
     try std.testing.expectEqual(@as(usize, 1), backend.translate(&ev, &out));
     try std.testing.expectEqual(platform.MouseButton.right, out[0].payload.mouse_button_up.button);
     try std.testing.expectEqual(@as(i32, 4), out[0].payload.mouse_button_up.y);
     try std.testing.expect(out[0].time_ns >= first);
 
-    ev.text = .{ .type = c.TEXTINPUT, .timestamp = 0, .window_id = 0, .text = @splat(0) };
-    @memcpy(ev.text.text[0..9], "abcdefghi");
+    ev = std.mem.zeroes(c.SDL_Event);
+    ev.text.type = c.SDL_EVENT_TEXT_INPUT;
+    ev.text.text = "abcdefghi";
     try std.testing.expectEqual(@as(usize, 2), backend.translate(&ev, &out));
     try std.testing.expectEqualStrings("i", out[1].payload.text_input.slice());
 
-    ev.common = .{ .type = c.TEXTEDITING, .timestamp = 0 };
+    ev = std.mem.zeroes(c.SDL_Event);
+    ev.type = c.SDL_EVENT_TEXT_EDITING;
     try std.testing.expectEqual(@as(usize, 0), backend.translate(&ev, &out));
 }
 
 // The event kinds that no injected input can make on a headless server: window state, quit, and
-// controller activity without a controller.
-test "translation: window state, quit and controller events" {
+// gamepad activity without a gamepad.
+test "translation: window state, quit and gamepad events" {
     var backend = try startedBackend(1);
     defer backend.deinit();
     var p = backend.asPlatform();
     _ = try p.start();
     try p.setResolution(8, 6);
     var out: [4]platform.Event = undefined;
-    var ev: c.Event = .{ .raw = @splat(0) };
+    var ev = std.mem.zeroes(c.SDL_Event);
 
-    ev.window = .{ .type = c.WINDOWEVENT, .timestamp = 0, .window_id = 0, .event = c.WINDOWEVENT_FOCUS_GAINED, .padding1 = 0, .padding2 = 0, .padding3 = 0, .data1 = 0, .data2 = 0 };
+    ev.type = c.SDL_EVENT_WINDOW_FOCUS_GAINED;
     try std.testing.expectEqual(@as(usize, 1), backend.translate(&ev, &out));
     try std.testing.expectEqual(platform.Event.Kind.focus_gained, std.meta.activeTag(out[0].payload));
-    ev.window.event = c.WINDOWEVENT_FOCUS_LOST;
+    ev.type = c.SDL_EVENT_WINDOW_FOCUS_LOST;
     try std.testing.expectEqual(@as(usize, 1), backend.translate(&ev, &out));
     try std.testing.expectEqual(platform.Event.Kind.focus_lost, std.meta.activeTag(out[0].payload));
     // A size change reports the drawable, which is the area where the renderer presents.
-    ev.window.event = c.WINDOWEVENT_SIZE_CHANGED;
+    ev.window.type = c.SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED;
     ev.window.data1 = 3;
     ev.window.data2 = 5;
     try std.testing.expectEqual(@as(usize, 1), backend.translate(&ev, &out));
     try std.testing.expectEqual(backend.outputSize().?, out[0].payload.drawable_resized);
     // Window states that the game does not need are dropped, not translated.
-    ev.window.event = 1; // SDL_WINDOWEVENT_SHOWN
+    ev.type = c.SDL_EVENT_WINDOW_SHOWN;
     try std.testing.expectEqual(@as(usize, 0), backend.translate(&ev, &out));
 
-    ev.common = .{ .type = c.QUIT, .timestamp = 0 };
+    ev = std.mem.zeroes(c.SDL_Event);
+    ev.type = c.SDL_EVENT_QUIT;
     try std.testing.expectEqual(@as(usize, 1), backend.translate(&ev, &out));
     try std.testing.expectEqual(platform.Event.Kind.quit, std.meta.activeTag(out[0].payload));
 
-    // SDL's controller button and axis numbers are the project's numbers, so no mapping table is
-    // necessary.
-    ev.cbutton = .{ .type = c.CONTROLLERBUTTONDOWN, .timestamp = 0, .which = 7, .button = 3, .state = c.PRESSED, .padding1 = 0, .padding2 = 0 };
+    // SDL's gamepad button and axis numbers are the project's numbers (south, east, west, north
+    // are a, b, x, y), so no mapping table is necessary.
+    ev = std.mem.zeroes(c.SDL_Event);
+    ev.gbutton.type = c.SDL_EVENT_GAMEPAD_BUTTON_DOWN;
+    ev.gbutton.which = 7;
+    ev.gbutton.button = c.SDL_GAMEPAD_BUTTON_NORTH;
+    ev.gbutton.down = true;
     try std.testing.expectEqual(@as(usize, 1), backend.translate(&ev, &out));
     try std.testing.expectEqual(platform.ControllerButton.y, out[0].payload.controller_button_down.button);
     try std.testing.expectEqual(@as(u32, 7), @backingInt(out[0].payload.controller_button_down.controller));
-    ev.caxis = .{ .type = c.CONTROLLERAXISMOTION, .timestamp = 0, .which = 7, .axis = 5, .padding1 = 0, .padding2 = 0, .padding3 = 0, .value = -1234, .padding4 = 0 };
+    // A button beyond the project's set (a paddle, the touchpad) makes no event.
+    ev.gbutton.button = c.SDL_GAMEPAD_BUTTON_TOUCHPAD;
+    try std.testing.expectEqual(@as(usize, 0), backend.translate(&ev, &out));
+    ev = std.mem.zeroes(c.SDL_Event);
+    ev.gaxis.type = c.SDL_EVENT_GAMEPAD_AXIS_MOTION;
+    ev.gaxis.which = 7;
+    ev.gaxis.axis = c.SDL_GAMEPAD_AXIS_RIGHT_TRIGGER;
+    ev.gaxis.value = -1234;
     try std.testing.expectEqual(@as(usize, 1), backend.translate(&ev, &out));
     try std.testing.expectEqual(platform.ControllerAxis.trigger_right, out[0].payload.controller_axis.axis);
     try std.testing.expectEqual(@as(i16, -1234), out[0].payload.controller_axis.value);
-    // A removal reports the instance id, even when this backend has no open controller.
-    ev.cdevice = .{ .type = c.CONTROLLERDEVICEREMOVED, .timestamp = 0, .which = 7 };
+    // A removal reports the instance id, even when this backend has no open gamepad.
+    ev = std.mem.zeroes(c.SDL_Event);
+    ev.gdevice.type = c.SDL_EVENT_GAMEPAD_REMOVED;
+    ev.gdevice.which = 7;
     try std.testing.expectEqual(@as(usize, 1), backend.translate(&ev, &out));
     try std.testing.expectEqual(@as(u32, 7), @backingInt(out[0].payload.controller_removed));
     // An addition that SDL cannot open makes no event, not an unusable id.
-    ev.cdevice = .{ .type = c.CONTROLLERDEVICEADDED, .timestamp = 0, .which = 99 };
+    ev.gdevice.type = c.SDL_EVENT_GAMEPAD_ADDED;
+    ev.gdevice.which = 99;
     try std.testing.expectEqual(@as(usize, 0), backend.translate(&ev, &out));
 }
 

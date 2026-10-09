@@ -1,7 +1,7 @@
-//! The SDL platform module, of Linux and Windows: the only code that links SDL2.
+//! The SDL platform module, of Linux and Windows: the only code that links SDL3. `c` is SDL's own
+//! API, translated from its headers by build.zig.
 const std = @import("std");
-const gameport = @import("gameport");
-pub const c = @import("sdl.zig");
+pub const c = @import("c");
 pub const backend = @import("backend.zig");
 pub const eventlog = @import("eventlog.zig");
 pub const host = @import("host.zig");
@@ -11,32 +11,13 @@ test {
     std.testing.refAllDecls(@This());
 }
 
-/// The linked SDL2 release, as "major.minor.patch".
+/// The linked SDL release, as "major.minor.patch".
 pub fn linkedVersion(buf: []u8) []const u8 {
-    var v: c.Version = undefined;
-    c.SDL_GetVersion(&v);
-    return std.fmt.bufPrint(buf, "{d}.{d}.{d}", .{ v.major, v.minor, v.patch }) catch unreachable;
+    const v = c.SDL_GetVersion();
+    return std.fmt.bufPrint(buf, "{d}.{d}.{d}", .{ @divTrunc(v, 1_000_000), @mod(@divTrunc(v, 1000), 1000), @mod(v, 1000) }) catch unreachable;
 }
 
-pub const VersionCheck = struct {
-    linked: []const u8,
-    pinned: []const u8,
-    matches: bool,
-};
-
-/// Compares the linked SDL2 release with the release that build.zig recorded: the one that
-/// pkg-config reported on Linux, the `sdl2` package's on Windows.
-pub fn checkVersion(buf: []u8) VersionCheck {
-    const linked = linkedVersion(buf);
-    return .{ .linked = linked, .pinned = gameport.version.sdl, .matches = std.mem.eql(u8, linked, gameport.version.sdl) };
-}
-
-test "the linked library is an SDL 2 release" {
+test "the linked library is an SDL 3 release" {
     var buf: [32]u8 = undefined;
-    try std.testing.expect(std.mem.startsWith(u8, linkedVersion(&buf), "2."));
-}
-
-test "SDL initialises and shuts down without a display" {
-    try std.testing.expectEqual(@as(c_int, 0), c.SDL_Init(0));
-    c.SDL_Quit();
+    try std.testing.expect(std.mem.startsWith(u8, linkedVersion(&buf), "3."));
 }

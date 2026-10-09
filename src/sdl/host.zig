@@ -8,8 +8,8 @@
 const std = @import("std");
 const gameport = @import("gameport");
 const native = @import("native");
-const c = @import("sdl.zig");
-const version = @import("root.zig");
+const c = @import("c");
+const sdl = @import("root.zig");
 const SdlBackend = @import("backend.zig").SdlBackend;
 
 /// The rate of the fallback pacer, when the display does not pace the presentation.
@@ -69,8 +69,7 @@ pub fn run(gpa: std.mem.Allocator, io: std.Io, environ: *const std.process.Envir
     const name = program_name;
 
     var ver_buf: [32]u8 = undefined;
-    const check = version.checkVersion(&ver_buf);
-    try err.print("{s}: SDL2 {s} linked (pinned {s})\n", .{ name, check.linked, check.pinned });
+    try err.print("{s}: SDL {s}\n", .{ name, sdl.linkedVersion(&ver_buf) });
     try err.flush();
 
     // The providers: the save directory, and the game directory of the positional argument. They

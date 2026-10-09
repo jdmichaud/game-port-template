@@ -6,7 +6,6 @@ const std = @import("std");
 
 pub const Options = struct {
     shared: *std.Build.Module,
-    versions: *std.Build.Step.Options,
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
     /// The core steps the browser build adds itself to.
@@ -17,7 +16,6 @@ pub const Options = struct {
 };
 
 pub fn add(b: *std.Build, o: Options) void {
-    const versions = o.versions;
     const target = o.target;
     const optimize = o.optimize;
     const shared = o.shared;
@@ -32,7 +30,6 @@ pub fn add(b: *std.Build, o: Options) void {
         .target = web_target,
         .optimize = web_optimize,
     });
-    web_shared.addOptions("build_versions", versions);
     const web_module = b.addExecutable(.{
         .name = "gameport",
         .root_module = b.createModule(.{
