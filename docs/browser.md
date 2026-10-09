@@ -1,7 +1,8 @@
 # The browser build
 
-For a port that runs in the browser (`src/web`, the `web` and `web-check` steps). A port without
-it deletes this file, `src/web`, those steps and the browser items of its plan in one commit. It is
+For a port that runs in the browser (`src/web`, whose `build.zig` adds the `web` and `web-check`
+steps). A port without it deletes this file, `src/web` and the one `web.add` call in `build.zig` in
+one commit. It is
 part of the design: change it only with the user's approval, as DESIGN.md.
 
 ## The module
