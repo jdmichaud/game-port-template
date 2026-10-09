@@ -75,7 +75,7 @@ tools that run it.
 ## Oracles
 
 The measurements come from oracles that live outside the repository
-(`docs/reverse-engineering.md`):
+(`re/README.md`, in the `-re` repository):
 
 - **Routine vectors.** An interpreter or emulator runs one of the original's routines, with its
   callees, on chosen inputs, and records the outputs.

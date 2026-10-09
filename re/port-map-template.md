@@ -1,9 +1,9 @@
 # The TODO(subsystem) port map
 
-Copy this outline to `docs/<subsystem>-port-map.md` for each subsystem of the original (the
-simulation, the rules, the renderer, the audio, the computer players, the films, the menus...).
-A port map is the record of what the original does and where it is in the port. It explains the
-code; it does not tell a history.
+Copy this outline to `docs/<subsystem>-port-map.md` in the `-re` repository for each subsystem of
+the original (the simulation, the rules, the renderer, the audio, the computer players, the films,
+the menus...). A port map is the record of what the original does and where it is in the port. It
+explains the code; it does not tell a history.
 
 Rules for the whole map:
 

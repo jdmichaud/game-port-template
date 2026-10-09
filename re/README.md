@@ -1,7 +1,9 @@
 # Studying the original
 
-How to find out what the original does, and how sure to be. Everything described here runs
-outside the repository; only its recorded outputs enter it (`docs/testing.md`).
+This folder starts the port's `-re` repository (the template's README, step 2): copy it there and
+delete it from the port. It says how to find out what the original does, and how sure to be.
+Everything described here runs in the `-re` repository; only its recorded outputs enter the port
+(the port's `docs/testing.md`).
 
 ## Sources, and how far to trust them
 
@@ -103,14 +105,14 @@ their checkpoints before it is trusted.
 
 ## Port maps
 
-Each subsystem has a port map in `docs/` (`docs/port-map-template.md`): the original's pieces,
+Each subsystem has a port map in this repository (`port-map-template.md`): the original's pieces,
 where each is in the port, the data layouts, the algorithms, the pitfalls, and the evidence. Code
 comments cite port-map sections, so keep a section's number once it is cited. A port map records
 results, one sentence per measurement; it holds no tool instructions.
 
-## Keeping it outside the repository
+## What lives here
 
-The emulator setups, the capture harnesses, the interpreter tool, the patches, and every capture,
-dump and screenshot live beside the repository, with a README saying what each script does. The
-repository receives only recorded measurements, and builds and tests without any of this
-(`PLAN.md`, S1).
+The emulator setups, the capture harnesses, the interpreter tool, the patches and the port maps,
+with a README saying what each script does. Captures, dumps and screenshots stay outside both
+repositories. The port receives only recorded measurements, and builds and tests without any of
+this (the port's `PLAN.md`, S1).

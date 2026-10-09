@@ -14,7 +14,7 @@ errors, memory ownership, asynchronous operations and the frame format explicit.
 - **Fidelity is defined by the original game's observable behaviour.** The original executable,
   its data files and recorded traces of it running are the reference. Disassembly and recovered
   source code help to find and understand that behaviour; they are not the reference
-  (`docs/reverse-engineering.md`).
+  (`re/README.md`, kept in the `-re` repository).
 - **The port chooses its own structure.** APIs, data structures, algorithms and control flow are
   chosen for clarity and portability, and their results are checked against the original. The
   original's addresses and register conventions belong in comments, port maps and compatibility
@@ -306,8 +306,8 @@ The toolchain is pinned (`build.zig.zon`, `build.zig`). The modules, and what ea
 
 - Every behaviour has evidence: a reading of the original's bytes, a measurement of the original
   running, or a recorded trace. A comment names the original's routine and address it follows.
-- Each subsystem has a port map (`docs/port-map-template.md`): what the original's pieces are,
-  where they are in the port, and how they were checked.
+- Each subsystem has a port map in the `-re` repository (`re/port-map-template.md`): what the
+  original's pieces are, where they are in the port, and how they were checked.
 - A deliberate difference from the original is the user's decision, recorded where the code makes
   it and, for a feature, as an addition in the plan (A1, A2, ...).
 - A report of a defect is a lead: measure the original before changing the port.

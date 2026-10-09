@@ -7,8 +7,8 @@ previous ports arrived at; the examples in its documents come from them.
 The template has two parts:
 
 - **The way of working.** The rules for agents (`AGENTS.md`), the plan (`PLAN.md`), the design
-  (`DESIGN.md`), and the notes in `docs/` on the tests, the study of the original and
-  the lessons learned.
+  (`DESIGN.md`), the notes in `docs/` on the tests and the lessons learned, and `re/`, the start
+  of the study of the original.
 - **A skeleton that builds and tests as it is.** The platform boundary, the three hosts (a
   headless agent host, an SDL host and a browser build) and a placeholder game in place of the
   real one. It holds what every port needs the same way; what depends on the game (a network
@@ -43,7 +43,8 @@ The placeholder name of the project is `gameport`.
    captures of it live outside both repositories. The study of the original gets its own versioned
    repository beside the port, `mygame-re`, not pushed unless the user decides: the tools that drive
    the emulator and the decompiler, the capture and compare scripts, and the port maps with the
-   original's addresses. The port commits only recorded measurements (`docs/testing.md`).
+   original's addresses. Start it from the template's `re/` folder. The port commits only recorded
+   measurements (`docs/testing.md`).
 3. **Write the game into `DESIGN.md`.** Its TODO sections describe the original: the executable,
    the video modes, the sound hardware, the input devices, the network, and the subsystems that
    the port maps will cover. The rest of the design applies as it is; change it only with the
@@ -64,12 +65,11 @@ The placeholder name of the project is `gameport`.
 - `PLAN.md`: the work, in phases and items, each with a scope and a gate.
 - `DESIGN.md`: the technical design: the platform boundary, the hosts, determinism, the builds.
 - `docs/testing.md`: what is tested, how, and what may be committed as reference data.
-- `docs/reverse-engineering.md`: how to study the original: sources, oracles, emulators, port
-  maps.
-- `docs/port-map-template.md`: the outline of a subsystem's port map.
 - `docs/lessons.md`: the lessons and traps of previous ports that apply to any port.
 - `docs/browser.md`, `docs/network.md`: the browser build and network play, for a port that has
   them; a port without one deletes the file and its code in one commit.
+- `re/`: the start of the `-re` repository: how to study the original (sources, oracles,
+  emulators, port maps) and the outline of a port map. Copy it there, then delete it here.
 - `src/shared`: the `gameport` module, the game and everything the targets share. It links
   nothing. `platform.zig` holds the platform contract, `memory.zig` the in-memory providers, and
   `game.zig` the placeholder game.
