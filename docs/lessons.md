@@ -111,18 +111,3 @@ time once.
   needs a streaming writer; directory entries can report an unknown kind; `std.process.Args.iterate`
   does not compile for Windows (use `iterateAllocator`); `setenv` does not exist there (set SDL's
   hints with override priority instead).
-- **The browser build without compiler-rt** imports the helpers the compiler calls (128-bit
-  multiply and divide, some math): the page provides them, tested against compiler-rt, and the
-  build checks the import list. A Debug build can import more than a release build.
-- **Browsers**: audio starts only after a user gesture, and a browser without a sound device keeps
-  it suspended; pointer lock also needs a gesture; a script that waits for the page's state should
-  wait on the element that carries it, not on the visible text.
-- **Ask for the plain pointer lock.** A lock with `unadjustedMovement` (counts without the system's
-  acceleration) worked in every browser on Linux, but in Chrome and Edge on a Windows PC the
-  motion stopped at the browser window's border. Headless and Xvfb runs cannot show it: ask the
-  user for the browser and the system, and check the fix there.
-- **The test suites never load the browser module.** A 128-bit division and float `@round`,
-  `@min`, `@max`, `std.math.hypot` in shared code became imports that the page refused, and the
-  browser build did not start for hours while every suite passed. Run the browser build's import
-  check before each commit of shared code; `@sqrt`, `@floor`, `@ceil`, `@trunc` and `@abs` are
-  WebAssembly instructions, the others are not.

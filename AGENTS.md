@@ -16,7 +16,7 @@ Rules:
 - Maintain PLAN.md: a missing item is first documented in PLAN.md, in its own commit, with the
   rationale in the commit message. When an item's gate is met, flag it ([x]). The plan holds
   items, scopes and gates, not commentary.
-- DO NOT modify DESIGN.md without explicit approval.
+- DO NOT modify DESIGN.md, docs/browser.md or docs/network.md without explicit approval.
 - This file holds rules only. A user's decision goes under PLAN.md's Decisions with its date; the
   priority is the plan's order; history is git log. Nothing here is dated or "current".
 - Use as few dependencies as possible.

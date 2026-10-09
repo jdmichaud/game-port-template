@@ -6,7 +6,7 @@
 
 // --- the helpers that the module imports in place of compiler-rt ------------------------------
 
-// The module links no compiler-rt (DESIGN.md 5.3), so the functions of it that the game calls are
+// The module links no compiler-rt (docs/browser.md), so the functions of it that the game calls are
 // imports, and these give the same results to the bit. `__multi3` is the product of two 128-bit
 // integers: BigInt is exact. A 128-bit value crosses as two 64-bit halves, low first, and the
 // result goes to the address in the first argument. `zig build web-check` compares each helper
@@ -503,10 +503,10 @@ function gameportHelpers(memory) {
     wasm.gp_init();
 
     // The game's files: `assets/manifest.json` lists them as {"files": [{"name", "size"}]}. The
-    // server that sends the page serves them; the player never uploads them (DESIGN.md section
-    // 5.3). The skeleton's placeholder game runs without any, so a missing manifest is tolerated
-    // here; a port whose game needs files makes it an error that stops with a message. Fetch first
-    // the files the module needs to draw its loading screen in the game's style.
+    // server that sends the page serves them; the player never uploads them (docs/browser.md).
+    // The skeleton's placeholder game runs without any, so a missing manifest is tolerated here;
+    // a port whose game needs files makes it an error that stops with a message. Fetch first the
+    // files the module needs to draw its loading screen in the game's style.
     // Six are fetched at a time, and a file of another size than the listed one stops the load:
     // a server's error page is not a game file.
     let files = [];

@@ -70,6 +70,8 @@ The placeholder name of the project is `gameport`.
   maps.
 - `docs/port-map-template.md`: the outline of a subsystem's port map.
 - `docs/lessons.md`: the lessons and traps of previous ports that apply to any port.
+- `docs/browser.md`, `docs/network.md`: the browser build and network play, for a port that has
+  them; a port without one deletes the file and its code in one commit.
 - `src/shared`: the `gameport` module, the game and everything the targets share. It links
   nothing. `platform.zig` holds the platform contract, `memory.zig` the in-memory providers, and
   `game.zig` the placeholder game.

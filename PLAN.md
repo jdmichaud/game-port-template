@@ -130,25 +130,9 @@
 
 - [ ] **Milestone M3:** the complete local game on Linux, with the agent host.
 
-## P2 — Multiplayer (TODO: remove if the original has none)
+## P2 — Network play
 
-- [ ] **19 — Shared session protocol** — Depends: 18.
-  - A versioned protocol in shared code: handshake, host ordering, complete commands, previews,
-    state hashes at turn boundaries, recovery.
-  - Gate: two agent instances handle duplicates, stale epochs, invalid actions, mismatches and a
-    disconnect; protocol state stays outside the simulation.
-
-- [ ] **20 — First real transport** — Depends: 19, D2.
-  - TODO(the transport of decision D2): framing, connection events, queue limits, backpressure.
-  - Gate: two games exchange messages through the real transport; failure and reconnection
-    follow the contract.
-
-- [ ] **21 — Multiplayer acceptance** — Depends: 18, 20.
-  - Whole games, session controls and recovery between two machines and under controlled network
-    conditions.
-  - Gate: the peers agree on canonical outcomes; latency and duplicates do not change a result.
-
-- [ ] **Milestone M4:** Linux multiplayer through the port's protocol.
+Only if the game plays over a link: the items of `docs/network.md`.
 
 ## P3 — Windows/SDL
 
@@ -158,40 +142,14 @@
   - Gate: the tests and the local game run on Windows itself; the linked libraries are Windows'
     own.
 
-- [ ] **23 — Windows acceptance** — Depends: 21, 22.
-  - Replays and multiplayer between Linux and Windows; restarts and real devices.
+- [ ] **23 — Windows acceptance** — Depends: 22.
+  - Replays (and network play, if any) between Linux and Windows; restarts and real devices.
   - Gate: canonical state agrees across the native platforms. Cross-compilation alone does not
     complete this item.
 
-## P4 — Browser/Wasm
+## P4 — Browser
 
-- [ ] **24 — Browser build and I/O** — Depends: 18.
-  - `wasm32-freestanding` without libc or compiler-rt, memory and helper imports from the page,
-    the files fetched before the first update from the server that sends the page (streaming I/O
-    only if play needs it), never picked or uploaded by the player (DESIGN.md section 5.3).
-  - Gate: the build checks its import list; ownership, memory growth and cleanup are exercised;
-    served by the native game, the page loads every file from it, and without a manifest it stops
-    with a message.
-
-- [ ] **25 — Browser host services** — Depends: 24.
-  - Canvas, input and pointer lock, Web Audio, storage, TODO(the transport).
-  - Gate: the game runs in Chromium and Firefox; its records survive a reload; the user gesture
-    that audio and pointer lock need is handled; from the first frame (loading, click to start,
-    errors) the page is in the game's style, checked on screenshots against the native game.
-
-- [ ] **26 — Browser acceptance** — Depends: 25.
-  - The reference scenarios and multiplayer in the declared browsers; size and latency measured.
-  - Gate: the required observations pass in the browsers that were run.
-
-## P5 — Legacy protocol compatibility (TODO: remove if the original has no network play)
-
-- [ ] **27 — Original packet codec** — Depends: 04, 19.
-  - Decode and encode the original's packets from verified captures, offline.
-  - Gate: packet fixtures check fields, lengths and malformed input without a live peer.
-
-- [ ] **28 — Legacy session and interoperability** — Depends: 20, 27.
-  - The original's session rules in a separate adapter, and a transport or bridge to reach it.
-  - Gate: recorded sessions replay, and a real original peer completes the supported actions.
+Only if the port runs in the browser: the items of `docs/browser.md`.
 
 ## Standing rule
 
@@ -215,10 +173,5 @@ Each with the date the user took it; a decision that changes is edited, and git 
 
 - [ ] **D1 — Saved-position interchange**: TODO(whether the port imports the original's save
   files, and whether it writes them).
-- [ ] **D2 — First network transport**: TODO(for example: the native game serves a page that runs
-  the game in the browser, and the two exchange the session protocol over a WebSocket; and a relay
-  mode of the same server, where two browsers play and the first to connect hosts: DESIGN.md
-  section 9). The executable serves the page, script and module built into it, never files beside
-  it.
 - Pin concrete versions and API schemas within their owning items; they are not reasons to reopen
   settled architecture.

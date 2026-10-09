@@ -1,6 +1,6 @@
 //! Checks the browser build's module, as part of `zig build web`: a WebAssembly binary that imports
 //! its memory, the page's functions and the helpers that stand in for compiler-rt, which it does
-//! not link (DESIGN.md 5.3), and nothing else; and the script names every function among them.
+//! not link (docs/browser.md), and nothing else; and the script names every function among them.
 const std = @import("std");
 const web_output = @import("web_output");
 

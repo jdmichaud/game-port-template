@@ -38,8 +38,8 @@ The application composes three interfaces:
 
 - `Platform`: the lifecycle, events, time, presentation, PCM output and mouse capture.
   Implemented by the SDL backend, the browser backend and the agent backend. A port adds the
-  calls its game needs to all three: a transport for network play (section 9), I/O jobs that run
-  beside the frame (section 4).
+  calls its game needs to all three: a transport for network play (`docs/network.md`), I/O jobs
+  that run beside the frame (section 4).
 - `AssetSource`: named, read-only game files, listed and read. Implemented over a directory and
   memory; a port adds the sources its game needs (a CD image, files embedded in the executable,
   an overlay of mod files over the original's).
@@ -240,33 +240,7 @@ usable, and it declares itself DPI-aware (section 8).
 
 ### 5.3 The browser build
 
-The shared game compiled for `wasm32-freestanding`: no libc, no compiler-rt and no entry point.
-The page's hand-written JavaScript creates the memory, provides the host functions (canvas
-presentation, input with pointer lock, Web Audio, storage) and the few helper
-functions the compiler emits calls to (128-bit multiply and divide, and the math functions the
-code uses), and calls one update per animation frame. The build checks the module's list of
-imports: an unexpected import is an error, and each helper is tested against compiler-rt.
-
-When every file the game needs is fetched before the first update, the module needs no
-suspension mechanism. Only a game that must stream files during play needs one (Asyncify, with a
-pinned `wasm-opt`, a sized continuation buffer and a larger module; or JSPI where browsers
-support it), behind the I/O workflows of section 4.
-
-The browser keeps the game's records in its own storage, per address, and gives them back before
-the game starts.
-
-**Where the game's files come from.** The server that sends the page serves them: the page reads
-`assets/manifest.json` and fetches each `assets/NAME` it lists, and that server is the native game,
-reading the user's copy through its `AssetSource` (section 9). The page never asks the player to
-pick or upload the original's files. A page without a manifest says so and stops; it does not run
-a game without its files.
-
-**The page looks like the game.** The player sees the game's style from the first frame. The page
-fetches first the few files the module needs to draw a screen, and from then on the module draws
-the loading screen and its progress itself, in the game's own palette, font and boxes. Until then,
-and for an error, the page's own text stands in, in the game's colours and the closest font, never
-in a browser or framework style. Messages reach the player in the game's words and look, not as
-browser dialogs.
+`docs/browser.md`, for a port that runs in the browser.
 
 ### 5.4 A build with the game's files inside (optional)
 
@@ -322,54 +296,11 @@ The toolchain is pinned (`build.zig.zon`, `build.zig`). The modules, and what ea
   compiled from source and linked statically: the executables import only Windows' own libraries
   and the Universal C runtime. The SDL host is a console program and declares per-monitor DPI
   awareness through SDL's hint.
-- **The browser.** `wasm32-freestanding`, imported memory, no compiler-rt, imported symbols for the
-  host functions, no entry point (section 5.3).
+- **The browser.** `wasm32-freestanding`, no libc and no compiler-rt (`docs/browser.md`).
 
-## 9. Networking (TODO: remove if the original has no network play)
+## 9. Networking
 
-**Network play simulates complete commands deterministically on both sides.** The canonical game
-state holds the players, the simulation state, the rules state and the RNG; the camera, menus,
-devices and connections live outside it. Human input, computer players, replays and the network
-use the same typed commands, and shared game logic checks their legality.
-
-- The game logic and the simulation apply validated commands and expose state and outcomes.
-- The session protocol adapter, in shared code, encodes and decodes messages and keeps the
-  handshake, the ordering, the acknowledgements, the retries and the epochs.
-- The platform transport moves messages and reports connection events. The skeleton has none:
-  the port adds it to the platform contract (connect, listen, send, close; connected,
-  disconnected and received events) and to each backend.
-
-The port's own protocol is versioned: a handshake (protocol and simulation versions, asset
-identity, rules, players, initial state), commands proposed by the active player and ordered by
-the host peer, and a canonical state hash compared at each turn boundary. A mismatch pauses the
-game with its diagnostics. Previews of aiming or movement are separate from commands, rate-limited
-and discarded when stale. A disconnect keeps the session's epoch, and a duplicated command never
-acts twice.
-
-The transport delivers whole messages, reliably and in order, while a connection lives. `send`
-means accepted into a bounded queue; received messages arrive through `pollEvents`. The first
-transport is decision D2 of the plan (in a previous port, the native game served the browser build
-and a WebSocket on one port).
-
-The native game serves the browser build from inside itself. `build.zig` embeds the page, the
-script and the module into the executable (a generated module with `@embedFile`, the same way the
-module-import check reads them), so there is no `web` directory to serve and no option to serve
-one. The game files the guest loads come from the host's `AssetSource`, the user's copy.
-
-Two browsers can also play with no native game (in a previous port, `--server ADDRESS:PORT`). The
-native program then only serves the page and relays the session's binary messages between two
-WebSockets; the first browser to connect is the host. The server tells each page its role in a
-text message (`host`, `guest`), and tells the host when its guest arrives and leaves (`peer`,
-`left`). The host's page shows its guest to the module as a connection of its own, so the game's
-host logic needs no listening socket; its manifest says it is a relay, so the page reports the
-connection open only after its role. A host that leaves ends its guest's connection, and the next
-browser to join hosts.
-
-The original's own protocol, if the port must talk to the original, is a separate adapter: an
-offline codec from captured packets first, then its session rules.
-
-TODO: what the original's network code does (message types, the synchronisation model), from
-its bytes.
+`docs/network.md`, for a port that plays over a link.
 
 ## 10. Faithfulness
 
