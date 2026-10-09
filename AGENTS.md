@@ -7,9 +7,11 @@ The targeted platforms are Linux/SDL, Windows/SDL and the browser through WebAss
 The game plays as the original does: the port recreates the experience of the DOS game.
 
 Rules:
-- Create small self-contained commits on the main branch, each one building and passing the
-  tests. The subject is `area: description`; the body says why and how it was verified, wrapped
-  at 100 columns. Do not push: the user decides what leaves the machine.
+- Create small self-contained commits on the main branch. Each passes `zig build compile`
+  (formatted, every binary and test binary compiled) and the one check that measures its change;
+  run `zig build check` before handing over a batch. The subject is `area: description`; the body
+  says why and how it was verified, wrapped at 100 columns. Do not push: the user decides what
+  leaves the machine.
 - Maintain PLAN.md: a missing item is first documented in PLAN.md, in its own commit, with the
   rationale in the commit message. When an item's gate is met, flag it ([x]). The plan holds
   items, scopes and gates, not commentary.

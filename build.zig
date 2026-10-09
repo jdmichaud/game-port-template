@@ -8,7 +8,9 @@
 //! installs the browser build and checks its module's imports; `web-check` checks the page's
 //! helper functions against compiler-rt (it needs Node.js); `test` runs the unit tests of every
 //! module; `smoke` runs the agent host for a few frames; `verify` checks that the agent binary has
-//! no SDL dependency; `all` installs every binary of the target and of Windows (under
+//! no SDL dependency; `compile` checks formatting and compiles every binary and test binary
+//! without running anything (every commit); `check` runs compile, test, smoke, verify and web
+//! (every batch handed over); `all` installs every binary of the target and of Windows (under
 //! <prefix>/windows) and the browser build.
 const std = @import("std");
 const builtin = @import("builtin");
@@ -213,11 +215,27 @@ pub fn build(b: *std.Build) void {
         .imports = &.{.{ .name = "gameport", .module = shared }},
     });
 
+    // `compile`: the check of every commit. Formatting, and every binary and test binary
+    // compiled, the browser module included; nothing runs. Plain `zig build` compiles no test
+    // block, so a commit could build while its tests no longer compile.
+    const compile_step = b.step("compile", "Check formatting and compile every binary and test binary, running nothing");
+    // `zig fmt --check` itself: the build's Fmt step let a misformatted file through in 0.17.0.
+    const fmt = b.addSystemCommand(&.{ b.graph.zig_exe, "fmt", "--check" });
+    fmt.addFileArg(b.path("build.zig"));
+    fmt.addDirectoryArg(b.path("src"));
+    fmt.expectExitCode(0);
+    fmt.has_side_effects = true;
+    compile_step.dependOn(&fmt.step);
+    compile_step.dependOn(&agent_exe.step);
+    compile_step.dependOn(&sdl_exe.step);
+    compile_step.dependOn(&web_module.step);
+
     // Unit tests of every module. The tests of the SDL module link SDL2 as the host does.
     const test_step = b.step("test", "Run the unit tests of every module");
     const unit_modules = [_]*std.Build.Module{ shared, agent, native, sdl, web_parts };
     for (unit_modules) |m| {
         const t = b.addTest(.{ .root_module = m });
+        compile_step.dependOn(&t.step);
         test_step.dependOn(&b.addRunArtifact(t).step);
     }
 
@@ -233,6 +251,10 @@ pub fn build(b: *std.Build) void {
     no_sdl.addArtifactArg(agent_exe);
     no_sdl.expectExitCode(0);
     b.step("verify", "Check the agent host binary links no SDL library").dependOn(&no_sdl.step);
+
+    // `check`: everything above, once per batch of work handed over.
+    const check_step = b.step("check", "compile, test, smoke, verify and web: before handing over a batch");
+    for ([_]*std.Build.Step{ compile_step, test_step, &smoke.step, &no_sdl.step, web_step }) |s| check_step.dependOn(s);
 
     // `all`: every binary of the target and of Windows, and the browser build. The Windows binaries come from a second build for the
     // Windows target, run by this step alone, into <prefix>/windows: a build of any other step

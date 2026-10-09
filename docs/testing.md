@@ -4,16 +4,15 @@ What is tested, how, and what the tests may read. The skeleton has unit tests, t
 contract cases (`src/native/contract.zig`) and a headless smoke run; the harness beyond them
 depends on the game, and the port builds it as its checks need (below).
 
-## Before every commit
+## When to run what
 
-- `zig build test`: the unit tests of every module. **No test is skipped**: the summary says
-  "N pass (N total)".
-- The port's own suites, once it has them.
-- `zig build smoke` (the agent host for a few frames, with a save and a load) and `zig build
-  verify` (the agent binary links no SDL).
-- `zig build web`: the browser build, with the check of its module's imports. When a helper of
-  the page changes, `zig build web-check` (it needs Node.js).
-- `zig fmt --check src build.zig`.
+- **Every commit:** `zig build compile` (formatting, and every binary and test binary compiled;
+  plain `zig build` compiles no test block), then the one check that measures the change, and a
+  look at the game when the change shows.
+- **Before handing over a batch:** `zig build check`: compile, the unit tests of every module (**no
+  test is skipped**: the summary says "N pass (N total)"), `smoke`, `verify` and `web`. Add the
+  port's own suites to it as they appear. When a helper of the page changes, `zig build web-check`
+  (it needs Node.js).
 
 The steps are listed at the top of `build.zig`; agents build into a prefix and a cache under
 `/tmp/<project>`, never into `zig-out`.
