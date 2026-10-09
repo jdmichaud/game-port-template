@@ -1,8 +1,8 @@
 # Game port template
 
-A starting point for porting an old game, typically a DOS game, to Linux, Windows and the browser
-with Zig. It holds the way of working and the technical design that previous ports arrived at;
-the examples in its documents come from them.
+A starting point for porting an old game (a DOS program, a console cartridge, ...) to Linux,
+Windows and the browser with Zig. It holds the way of working and the technical design that
+previous ports arrived at; the examples in its documents come from them.
 
 The template has two parts:
 

@@ -109,8 +109,8 @@
     SDL build; no layout is assumed without the original's evidence.
 
 - [ ] **15 — Audio** — Depends: 07, 10, 11.
-  - TODO(the sound hardware: PC speaker, AdLib/OPL, Sound Blaster samples, MIDI): decoding,
-    sequencing, synthesis, mixing, priorities; SDL audio and the agent's PCM capture.
+  - TODO(the sound hardware: a PC's speaker, FM or sample cards, MIDI; a console's sound chips):
+    decoding, sequencing, synthesis, mixing, priorities; SDL audio and the agent's PCM capture.
   - Gate: event timing and the applicable sample references match; sounds follow the picture;
     underruns, suspension and queue pressure are exercised.
 

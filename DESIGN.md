@@ -102,11 +102,11 @@ resolution, and a failed mode change keeps the previous mode usable.
 
 ### 3.3 Input
 
-The platform delivers ordered, timestamped events in project-owned types, never SDL or DOS scan
-codes: key down and up, text input, relative mouse motion and the pointer position, buttons,
-wheel, controllers, focus, quit, and drawable-size changes. The game maps them to actions, with
-the original's filters, sensitivities and key tables in shared code. Relative mouse capture is a
-request, and an event reports whether it was granted; losing focus or capture releases held
+The platform delivers ordered, timestamped events in project-owned types, never SDL codes or the
+original platform's: key down and up, text input, relative mouse motion and the pointer position,
+buttons, wheel, controllers, focus, quit, and drawable-size changes. The game maps them to actions,
+with the original's filters, sensitivities and key tables in shared code. Relative mouse capture is
+a request, and an event reports whether it was granted; losing focus or capture releases held
 controls without producing an action.
 
 The mouse travels in the game's own units. A host that passes window pixels to a game drawn at a
@@ -139,11 +139,11 @@ fn close(file: AssetHandle) void;
 fn readAll(path: []const u8, max_bytes: usize) !OwnedBytes; // shared helper over the four
 ```
 
-Asset names are validated ASCII logical names, matched the way the original's file system
-matched them (DOS rules). Each source converts its own names: the directory source keeps the
-host's encoding; an ISO 9660 reader, if the port reads the CD image directly, drops version
-suffixes. Such a reader belongs in shared code over a byte source, so the same parser serves a
-native file, memory and a browser blob. An overlay decides which source answers first (for
+Asset names are validated ASCII logical names, matched the way the original's file system matched
+them (case-insensitive ASCII on DOS, for example). Each source converts its own names: the directory
+source keeps the host's encoding; an ISO 9660 reader, if the port reads the CD image directly, drops
+version suffixes. Such a reader belongs in shared code over a byte source, so the same parser serves
+a native file, memory and a browser blob. An overlay decides which source answers first (for
 example, a user configuration file or a mod's files over the CD's).
 
 ### 3.6 Storage
@@ -382,13 +382,13 @@ its bytes.
 
 ## 11. The original (TODO)
 
-- TODO: the executable: its format (DOS extender, protected or real mode), its memory map, where
-  its tables are, the version the port follows and its digest.
-- TODO: video: the modes, their drivers, resolutions and palettes, and what differs per mode
+- TODO: the program: its platform and format (a DOS executable and its extender, a cartridge ROM
+  and its mapper, ...), its memory map, where its tables are, the version the port follows and its
+  digest.
+- TODO: video: the modes or the video chip, resolutions and palettes, and what differs per mode
   (fonts, cursors, layout).
 - TODO: sound: the devices the original supports and the one the port reproduces.
-- TODO: input: keyboard tables, the mouse model (absolute or integrated deltas, sensitivity),
-  joysticks.
-- TODO: files: the layout of the CD and of the installed game, the configuration file.
+- TODO: input: the devices (keyboard tables, the mouse model, pads), and how each screen reads them.
+- TODO: files: where the game's data lives (disks, a CD, a ROM) and its configuration.
 - TODO: network: the link types the original offers.
-- TODO: the subsystems, each with its port map in `docs/`.
+- TODO: the subsystems, each with its port map in the -re repository.

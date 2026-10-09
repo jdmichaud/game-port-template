@@ -4,7 +4,8 @@ engineering practices.
 
 The targeted platforms are Linux/SDL, Windows/SDL and the browser through WebAssembly.
 
-The game plays as the original does: the port recreates the experience of the DOS game.
+The game plays as the original does: the port recreates the experience of the original
+game on its original platform.
 
 Rules:
 - Create small self-contained commits on the main branch. Each passes `zig build compile`
