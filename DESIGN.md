@@ -17,8 +17,7 @@ errors, memory ownership, asynchronous operations and the frame format explicit.
   (`re/README.md`, kept in the `-re` repository).
 - **The port chooses its own structure.** APIs, data structures, algorithms and control flow are
   chosen for clarity and portability, and their results are checked against the original. The
-  original's addresses and register conventions belong in comments, port maps and compatibility
-  parsers, not in the runtime's structure.
+  original's addresses and register conventions stay in the `-re` port maps (section 10).
 - **Linux/SDL first, the agent host alongside.** The headless agent host drives the same game
   without a window from the first items. Windows and the browser follow on the same shared code.
 - **Few dependencies.** Zig and SDL2 for the native game; nothing beyond the browser for the
@@ -305,7 +304,10 @@ The toolchain is pinned (`build.zig.zon`, `build.zig`). The modules, and what ea
 ## 10. Faithfulness
 
 - Every behaviour has evidence: a reading of the original's bytes, a measurement of the original
-  running, or a recorded trace. A comment names the original's routine and address it follows.
+  running, or a recorded trace.
+- Comments cite the port map's section; addresses stay in the `-re` port maps. Only code that
+  parses the original's files names offsets, and a value the original's behaviour depends on (an
+  address used as data) is a named constant citing its section.
 - Each subsystem has a port map in the `-re` repository (`re/port-map-template.md`): what the
   original's pieces are, where they are in the port, and how they were checked.
 - A deliberate difference from the original is the user's decision, recorded where the code makes
