@@ -4,7 +4,7 @@
     // Each port has its own: the rename of README.md puts in the value that `zig build`
     // suggests for the new name.
     .fingerprint = 0x15a057f38600fd95,
-    // build.zig checks it (`required_zig`): keep the two equal.
+    // build.zig stops on another Zig release or a development snapshot of this one.
     .minimum_zig_version = "0.17.0",
     .dependencies = .{
         .sdl2 = .{

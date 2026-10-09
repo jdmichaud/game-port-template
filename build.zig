@@ -15,10 +15,10 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-/// The Zig this build is written for: `minimum_zig_version` in build.zig.zon. Another release, or a
+/// The Zig this build is written for, `minimum_zig_version` in build.zig.zon. Another release, or a
 /// development snapshot of this one, fails here with both versions named, before a confusing
 /// error from a changed standard library.
-const required_zig = "0.17.0";
+const required_zig = @import("build.zig.zon").minimum_zig_version;
 
 comptime {
     const required = std.SemanticVersion.parse(required_zig) catch unreachable;
@@ -222,6 +222,7 @@ pub fn build(b: *std.Build) void {
     // `zig fmt --check` itself: the build's Fmt step let a misformatted file through in 0.17.0.
     const fmt = b.addSystemCommand(&.{ b.graph.zig_exe, "fmt", "--check" });
     fmt.addFileArg(b.path("build.zig"));
+    fmt.addFileArg(b.path("build.zig.zon"));
     fmt.addDirectoryArg(b.path("src"));
     fmt.expectExitCode(0);
     fmt.has_side_effects = true;
