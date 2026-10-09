@@ -39,9 +39,11 @@ The placeholder name of the project is `gameport`.
    git init && git add -A && git commit -m "Start mygame from the game port template"
    ```
 
-2. **Keep the original out of the repository.** The CD image, the installed game, captures of it
-   and the tools that study it live outside the repository. Recorded measurements of the
-   original's behaviour may be committed as test data (`docs/testing.md`).
+2. **Keep the original out of the repository, and the research beside it.** The game's files and
+   captures of it live outside both repositories. The study of the original gets its own versioned
+   repository beside the port, `mygame-re`, local and never published: the tools that drive the
+   emulator and the decompiler, the capture and compare scripts, and the port maps with the
+   original's addresses. The port commits only recorded measurements (`docs/testing.md`).
 3. **Write the game into `DESIGN.md`.** Its TODO sections describe the original: the executable,
    the video modes, the sound hardware, the input devices, the network, and the subsystems that
    the port maps will cover. The rest of the design applies as it is; change it only with the
