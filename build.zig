@@ -11,6 +11,19 @@
 //! no SDL dependency; `all` installs every binary of the target and of Windows (under
 //! <prefix>/windows) and the browser build.
 const std = @import("std");
+const builtin = @import("builtin");
+
+/// The Zig this build is written for: `minimum_zig_version` in build.zig.zon. Another release, or a
+/// development snapshot of this one, fails here with both versions named, before a confusing
+/// error from a changed standard library.
+const required_zig = "0.17.0";
+
+comptime {
+    const required = std.SemanticVersion.parse(required_zig) catch unreachable;
+    const found = builtin.zig_version;
+    if (found.major != required.major or found.minor != required.minor or found.order(required) == .lt)
+        @compileError("this build needs Zig " ++ required_zig ++ "; this is Zig " ++ builtin.zig_version_string);
+}
 
 /// The SDL2 release that the Linux host is built and tested against.
 pub const pinned_sdl_version = "2.32.4";
