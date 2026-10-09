@@ -52,11 +52,22 @@ time once.
   refused.
 - **Each video mode is its own picture.** Fonts, cursors, scales and layout differ per mode; check
   the end address of each table, and look at every mode in the game.
+- **How each screen reads input.** A screen reads either a latch set by the keyboard interrupt (one
+  action per press) or the held state; get it wrong and a film skips backwards. Key repeat rates
+  are the original's (in its ticks), and global hotkeys (pause, sound) are bypassed during text
+  entry: a password with a P paused a film into a black screen.
+- **Pacing is the original's clock.** Measure its tick source and its frame wait (the timer's
+  divisor, N ticks a frame, catching up when late) and port them as rational deadlines, never as
+  display frames.
 - **Emulated hardware has start-up requirements.** An OPL3 answers as an OPL2 until register 0x105
   is written, and its second bank of nine channels does not exist before that: every note the
   driver gave to those channels was silent.
 
 ## The port's code
+
+- **Every screen reads input through one mapping**, the port's own screens (settings, network
+  menus) included: they read raw events and ignored a pad's stick that the game's menus handled.
+  A pad without a hat reports its d-pad as axes, so the agent host injects axes as well as keys.
 
 - **Window pixels are not game pixels.** A host that passes window coordinates to a game drawn at
   a scale of three moves its pointer three times too fast. Convert in the host.
