@@ -58,6 +58,7 @@ The placeholder name of the project is `gameport`.
    build.
 6. **Replace the placeholder game.** `src/shared/game.zig` is where the real game grows, behind
    the same platform contracts that the hosts already drive.
+7. **Write the port's README.** This one describes the template: replace it as `AGENTS.md` says.
 
 ## The folder
 

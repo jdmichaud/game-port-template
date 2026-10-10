@@ -19,6 +19,11 @@ Rules:
 - DO NOT modify DESIGN.md, docs/browser.md or docs/network.md without explicit approval.
 - This file holds rules only. A user's decision goes under PLAN.md's Decisions with its date; the
   priority is the plan's order; history is git log. Nothing here is dated or "current".
+- Start the README from scratch and write a README that is short. There must be:
+  1. What is this repo? (a sentence)
+  2. How to start the game?
+  3. How to build the game?
+  4. License.
 - Use as few dependencies as possible.
 - Link native binaries statically when practical. Depend on a dynamic library only when no other
   practical choice is possible.
