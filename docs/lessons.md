@@ -83,3 +83,11 @@ play's in `docs/network.md`.
   (`b.addTranslateC(...).createModule()`) and write no extern by hand. `@enumFromInt` became
   `@fromBackingInt`; `std.process.Args.iterate` does not compile for Windows (use
   `iterateAllocator`), and there is no `setenv` (set SDL's hints with override priority).
+- **Zig 0.17 puts a 256 KiB signal stack in every thread's thread-local storage**
+  (`std.options.signal_stack_size`, `1 << 18`), and glibc cannot start a thread whose stack is
+  not larger. SDL2 2.30.0 creates its PulseAudio hot-plug thread with a 256 KiB stack and waits
+  for it forever: the game hung at audio start on Ubuntu 24.04 unless `SDL_AUDIODRIVER=pipewire`.
+  A host that links C libraries sets `pub const std_options: std.Options = .{
+  .signal_stack_size = null };` in its root (a stack overflow then loses Zig's trace);
+  `readelf -lW BINARY | grep TLS` shows the size. The template's SDL3 starts its Linux threads
+  with default stacks.
