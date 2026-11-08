@@ -12,17 +12,19 @@ pub fn main(init: std.process.Init) !void {
         try showUsage(init.io, if (err == error.MissingAssets) "an asset path is required" else "invalid arguments");
         std.process.exit(2);
     };
-    if (options.help) return showHelp(init.io, init.arena.allocator(), init.environ_map);
+    if (options.help) return showHelp(init.io, init.arena.allocator(), init.environ_map, options.providers.saves);
     const status = try sdl.host.run(init.gpa, init.io, init.environ_map, options);
     if (status != 0) std.process.exit(status);
 }
 
-/// `--help`: the options, then the folders the game uses by default, on standard output.
-fn showHelp(io: std.Io, allocator: std.mem.Allocator, environ: *const std.process.Environ.Map) !void {
+/// `--help`, on standard output: how the program is called, the folders it uses (at `--saves`
+/// when given), then the options.
+fn showHelp(io: std.Io, allocator: std.mem.Allocator, environ: *const std.process.Environ.Map, saves: ?[]const u8) !void {
     var buf: [4096]u8 = undefined;
     var w = std.Io.File.stdout().writerStreaming(io, &buf);
-    try w.interface.writeAll(sdl.host.usage);
-    try native.cli.writeStorageHelp(&w.interface, allocator, environ);
+    try w.interface.writeAll(sdl.host.usage_head);
+    try native.cli.writeStorageHelp(&w.interface, allocator, environ, saves);
+    try w.interface.writeAll(sdl.host.usage_options);
     try w.interface.flush();
 }
 

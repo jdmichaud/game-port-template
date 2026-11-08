@@ -14,8 +14,7 @@ const DirectoryStorage = @import("storage.zig").DirectoryStorage;
 
 pub const usage =
     \\  ASSET_PATH    the directory of the original's files
-    \\  --saves DIR    where saves are kept (default: the per-user application data directory,
-    \\                 named at the end of --help)
+    \\  --saves DIR    where saves are kept (default: the per-user application data directory)
     \\
 ;
 
@@ -146,18 +145,18 @@ pub fn defaultSaveDirectory(allocator: std.mem.Allocator, environ: *const std.pr
     return std.fmt.allocPrint(allocator, "{s}/.local/share/gameport/saves", .{home}) catch return error.OutOfMemory;
 }
 
-/// The end of the interactive host's `--help`: every folder the game uses by default, as this
-/// machine's environment names it (or the option to give where it names none), so that a player
-/// finds their saves without reading the code. A port names here each file it keeps there (its
-/// settings, its replays) and each other folder it adds.
-pub fn writeStorageHelp(w: *std.Io.Writer, allocator: std.mem.Allocator, environ: *const std.process.Environ.Map) (std.Io.Writer.Error || error{OutOfMemory})!void {
-    try w.writeAll("\nWithout --saves, the saves are kept in:\n");
-    const directory = defaultSaveDirectory(allocator, environ) catch |err| switch (err) {
-        error.NoApplicationDirectory => return w.writeAll("  no per-user directory here: give --saves DIR\n"),
+/// The folders in the interactive host's `--help`, after how the program is called, so that a
+/// player finds their files without reading the code: the saves, at `--saves` when given, else
+/// as this machine's environment names the per-user directory (or `--saves` to give where it
+/// names none). A port adds a line for each other folder or file it keeps (`config:` for its
+/// settings), as short.
+pub fn writeStorageHelp(w: *std.Io.Writer, allocator: std.mem.Allocator, environ: *const std.process.Environ.Map, saves: ?[]const u8) (std.Io.Writer.Error || error{OutOfMemory})!void {
+    const directory = if (saves) |given| try allocator.dupe(u8, given) else defaultSaveDirectory(allocator, environ) catch |err| switch (err) {
+        error.NoApplicationDirectory => return w.writeAll("\nsave: none here: give --saves DIR\n\n"),
         error.OutOfMemory => return error.OutOfMemory,
     };
     defer allocator.free(directory);
-    try w.print("  {s}\n", .{directory});
+    try w.print("\nsave: {s}\n\n", .{directory});
 }
 
 const contract = @import("contract.zig");
@@ -305,18 +304,21 @@ test "the options open a game directory, or none" {
     }
 }
 
-test "the help names the folder kept without --saves, or asks for one" {
+test "the help names the save folder: --saves's, else the per-user one, else none" {
     const allocator = std.testing.allocator;
     var env = try testEnviron(allocator, &.{ .{ "XDG_DATA_HOME", "/data" }, .{ "APPDATA", "C:\\Users\\player\\AppData\\Roaming" } });
     defer env.deinit();
     var out: std.Io.Writer.Allocating = .init(allocator);
     defer out.deinit();
-    try writeStorageHelp(&out.writer, allocator, &env);
-    const want = if (builtin.os.tag == .windows) "  C:\\Users\\player\\AppData\\Roaming\\gameport\\saves\n" else "  /data/gameport/saves\n";
-    try std.testing.expectEqualStrings("\nWithout --saves, the saves are kept in:\n" ++ want, out.written());
+    try writeStorageHelp(&out.writer, allocator, &env, null);
+    const want = if (builtin.os.tag == .windows) "\nsave: C:\\Users\\player\\AppData\\Roaming\\gameport\\saves\n\n" else "\nsave: /data/gameport/saves\n\n";
+    try std.testing.expectEqualStrings(want, out.written());
+    out.clearRetainingCapacity();
+    try writeStorageHelp(&out.writer, allocator, &env, "mine");
+    try std.testing.expectEqualStrings("\nsave: mine\n\n", out.written());
     var none = try testEnviron(allocator, &.{});
     defer none.deinit();
     out.clearRetainingCapacity();
-    try writeStorageHelp(&out.writer, allocator, &none);
-    try std.testing.expect(std.mem.endsWith(u8, out.written(), "  no per-user directory here: give --saves DIR\n"));
+    try writeStorageHelp(&out.writer, allocator, &none, null);
+    try std.testing.expectEqualStrings("\nsave: none here: give --saves DIR\n\n", out.written());
 }

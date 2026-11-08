@@ -21,8 +21,14 @@ pub const assets_required = false;
 
 const program_name = "gameport-sdl";
 
-pub const usage =
+/// The help's head: how the program is called (then `--help` names the folders: native/cli.zig
+/// `writeStorageHelp`), and its options.
+pub const usage_head =
     \\usage: gameport-sdl [OPTIONS] [ASSET_PATH]
+    \\
+;
+
+pub const usage_options =
     \\  ASSET_PATH           the directory of the original's files
     \\  --help, -h           show this help
     \\  --scale N            window scale, 1 to 64 (default 3)
@@ -32,10 +38,11 @@ pub const usage =
     \\                       and quit after that many seconds
     \\  --run-for SECONDS    quit after that many seconds, without the event log
     \\  --fps N              the fallback pacer's rate, 1 to 1000 (default 60)
-    \\  --saves DIR          where saves are kept (default: the per-user application data
-    \\                       directory, named at the end of this help)
+    \\  --saves DIR          where saves are kept (default: above)
     \\
 ;
+
+pub const usage = usage_head ++ usage_options;
 
 pub const Options = struct {
     help: bool = false,
