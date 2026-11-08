@@ -14,7 +14,8 @@ const DirectoryStorage = @import("storage.zig").DirectoryStorage;
 
 pub const usage =
     \\  ASSET_PATH    the directory of the original's files
-    \\  --saves DIR    where saves are kept (default: the per-user application data directory)
+    \\  --saves DIR    where saves are kept (default: the per-user application data directory,
+    \\                 named at the end of --help)
     \\
 ;
 
@@ -129,7 +130,7 @@ pub const Providers = struct {
 /// The per-user application data directory for the gameport saves:
 /// `$XDG_DATA_HOME/gameport/saves`, else `$HOME/.local/share/gameport/saves`, and
 /// `%APPDATA%\gameport\saves` on Windows. The caller owns the result.
-pub fn defaultSaveDirectory(allocator: std.mem.Allocator, environ: *const std.process.Environ.Map) OpenError![]u8 {
+pub fn defaultSaveDirectory(allocator: std.mem.Allocator, environ: *const std.process.Environ.Map) error{ NoApplicationDirectory, OutOfMemory }![]u8 {
     if (builtin.os.tag == .windows) {
         const appdata = environ.get("APPDATA") orelse return error.NoApplicationDirectory;
         if (appdata.len == 0) return error.NoApplicationDirectory;
@@ -143,6 +144,20 @@ pub fn defaultSaveDirectory(allocator: std.mem.Allocator, environ: *const std.pr
     const home = environ.get("HOME") orelse return error.NoApplicationDirectory;
     if (home.len == 0) return error.NoApplicationDirectory;
     return std.fmt.allocPrint(allocator, "{s}/.local/share/gameport/saves", .{home}) catch return error.OutOfMemory;
+}
+
+/// The end of the interactive host's `--help`: every folder the game uses by default, as this
+/// machine's environment names it (or the option to give where it names none), so that a player
+/// finds their saves without reading the code. A port names here each file it keeps there (its
+/// settings, its replays) and each other folder it adds.
+pub fn writeStorageHelp(w: *std.Io.Writer, allocator: std.mem.Allocator, environ: *const std.process.Environ.Map) (std.Io.Writer.Error || error{OutOfMemory})!void {
+    try w.writeAll("\nWithout --saves, the saves are kept in:\n");
+    const directory = defaultSaveDirectory(allocator, environ) catch |err| switch (err) {
+        error.NoApplicationDirectory => return w.writeAll("  no per-user directory here: give --saves DIR\n"),
+        error.OutOfMemory => return error.OutOfMemory,
+    };
+    defer allocator.free(directory);
+    try w.print("  {s}\n", .{directory});
 }
 
 const contract = @import("contract.zig");
@@ -288,4 +303,20 @@ test "the options open a game directory, or none" {
         defer allocator.free(not_a_directory);
         try std.testing.expectError(error.NotADirectory, providers.open(allocator, io, &env, .{ .assets = not_a_directory, .saves = paths[1] }));
     }
+}
+
+test "the help names the folder kept without --saves, or asks for one" {
+    const allocator = std.testing.allocator;
+    var env = try testEnviron(allocator, &.{ .{ "XDG_DATA_HOME", "/data" }, .{ "APPDATA", "C:\\Users\\player\\AppData\\Roaming" } });
+    defer env.deinit();
+    var out: std.Io.Writer.Allocating = .init(allocator);
+    defer out.deinit();
+    try writeStorageHelp(&out.writer, allocator, &env);
+    const want = if (builtin.os.tag == .windows) "  C:\\Users\\player\\AppData\\Roaming\\gameport\\saves\n" else "  /data/gameport/saves\n";
+    try std.testing.expectEqualStrings("\nWithout --saves, the saves are kept in:\n" ++ want, out.written());
+    var none = try testEnviron(allocator, &.{});
+    defer none.deinit();
+    out.clearRetainingCapacity();
+    try writeStorageHelp(&out.writer, allocator, &none);
+    try std.testing.expect(std.mem.endsWith(u8, out.written(), "  no per-user directory here: give --saves DIR\n"));
 }

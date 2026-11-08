@@ -3,6 +3,7 @@
 //! outer loop.
 const std = @import("std");
 const sdl = @import("sdl");
+const native = @import("native");
 
 pub fn main(init: std.process.Init) !void {
     // `iterateAllocator` is the form that Windows needs; the arena keeps the arguments for the
@@ -11,9 +12,18 @@ pub fn main(init: std.process.Init) !void {
         try showUsage(init.io, if (err == error.MissingAssets) "an asset path is required" else "invalid arguments");
         std.process.exit(2);
     };
-    if (options.help) return showUsage(init.io, null);
+    if (options.help) return showHelp(init.io, init.arena.allocator(), init.environ_map);
     const status = try sdl.host.run(init.gpa, init.io, init.environ_map, options);
     if (status != 0) std.process.exit(status);
+}
+
+/// `--help`: the options, then the folders the game uses by default, on standard output.
+fn showHelp(io: std.Io, allocator: std.mem.Allocator, environ: *const std.process.Environ.Map) !void {
+    var buf: [4096]u8 = undefined;
+    var w = std.Io.File.stdout().writerStreaming(io, &buf);
+    try w.interface.writeAll(sdl.host.usage);
+    try native.cli.writeStorageHelp(&w.interface, allocator, environ);
+    try w.interface.flush();
 }
 
 fn showUsage(io: std.Io, message: ?[]const u8) !void {

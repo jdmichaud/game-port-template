@@ -16,7 +16,7 @@ const usage =
     \\  --key FRAME:NAME press and release the key NAME (a platform.Key, as `f2` or `left`) at
     \\                   frame FRAME; the option repeats
     \\  ASSET_PATH       the directory of the original's files
-    \\  --saves DIR      where saves are kept
+    \\  --saves DIR      where saves are kept (default: none, in memory for the run)
     \\
 ;
 

@@ -33,7 +33,7 @@ pub const usage =
     \\  --run-for SECONDS    quit after that many seconds, without the event log
     \\  --fps N              the fallback pacer's rate, 1 to 1000 (default 60)
     \\  --saves DIR          where saves are kept (default: the per-user application data
-    \\                       directory)
+    \\                       directory, named at the end of this help)
     \\
 ;
 
